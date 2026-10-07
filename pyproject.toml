@@ -1,0 +1,56 @@
+[project]
+name = "supermarket-platform"
+version = "0.1.0"
+description = "AI-native supermarket operating system — phased development foundation"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "sqlalchemy>=2.0,<3",
+  "alembic>=1.15,<2",
+  "psycopg[binary]>=3.2,<4",
+  "email-validator>=2.2,<3",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.3,<10",
+  "pytest-cov>=6,<8",
+  "ruff>=0.11,<1",
+  "pip-audit>=2.8,<3",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps/api/src/supermarket"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["apps/api/src"]
+extend-exclude = [
+  ".bootstrap", ".uv-cache", ".venv", ".npm-cache", ".audit-cache", ".tools",
+  "node_modules", "dist",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/tests/*" = ["S101", "S105", "S608"]
+
+[tool.pytest.ini_options]
+testpaths = ["apps/api/tests"]
+addopts = "-ra --strict-markers"
+markers = ["database: requires a real PostgreSQL TEST_DATABASE_URL"]
+
+[tool.coverage.run]
+source = ["supermarket"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

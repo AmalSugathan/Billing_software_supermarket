@@ -1,0 +1,27 @@
+# Security
+
+## Implemented identity foundation
+Accounts use salted scrypt password hashes (N=131072, r=8, p=1); unknown accounts incur comparable verification work. Sessions use random 256-bit opaque tokens in HttpOnly/SameSite=Strict cookies, with only SHA-256 digests stored in PostgreSQL. Sessions expire after eight hours, are revoked on logout and reject inactive users. Secure cookies are the default; explicit local development HTTP is documented separately. Production configuration rejects insecure cookies and non-HTTPS or wildcard origins.
+
+Mutations check an explicit allowed Origin and a session-bound CSRF token; login/registration also require an allowed Origin. Authentication attempts are throttled in committed database transactions by client address and normalized email. Configure a trusted reverse proxy before public deployment so address-based limits are meaningful, with edge request/body/concurrency limits to protect password hashing.
+
+Each business request resolves authenticated membership and checks capabilities on the server. Restricted staff see assigned stores. Cross-business access returns unavailable; composite tenant foreign keys and forced PostgreSQL RLS reject invalid references. Transaction-local context is verified against concurrent pooled connections. The API rejects superuser, BYPASSRLS and business-table-owner runtime connections. Migration credentials never belong in the API.
+
+Audit and security records reject UPDATE/DELETE through privileges and database triggers. Setup, terminal and staff-grant changes have human-source audit entries committed atomically with the change. Sessions and user accounts are global identity records accessible only through explicit identity services, not a general database endpoint.
+
+This is a development increment, not a production security certification. TLS termination, encrypted disks/backups, field encryption/key management, MFA, email verification, password recovery, member revocation and administrative session management remain pilot prerequisites. No document upload/OCR endpoint is available yet.
+
+## Phase 1 prerequisites
+Complete MFA for owner/admin, verified invitations, safe member-role changes/revocation, session/rate-counter cleanup and operational approval policies before a public pilot. Schema-scoped grants in production should allow only required operations; the development provisioning helper is not production automation. Health endpoints do not assert that security or financial workflows are production-ready.
+
+Immutable financial/stock/audit records are enforced with privileges/triggers, not UI conventions. Approval transactions check current authority, versions and amount limits. Platform support access is explicitly granted, limited and audited. Secrets never enter logs, browser bundles or source control. Use TLS, encrypted storage/backups and restricted field encryption as appropriate.
+
+## Upload/AI controls
+Private quarantine, signature and type allowlist, size/page/decompression limits, malware scanning, sandboxed rendering/OCR, short-lived authorized downloads. Never trust filenames or supplied MIME. No arbitrary external URLs to prevent SSRF. See [OWASP upload guidance](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html).
+
+Invoice text and model outputs are untrusted. Tool allowlists, validation and server authorization prevent prompt injection from becoming a database action. Provider failures do not bypass confidence/review. Do not send unnecessary personal information to external models.
+
+## CI/release
+Least-privilege GitHub token, no production secrets on pull requests, lockfile installs, vulnerability checks and no automatic publishing/deployment. Configure protected main branch and require CI gate after repository creation. Container processes are non-root. CI test credentials are disposable, not production credentials.
+
+Before pilot: secret scanning, tenant authorization/IDOR tests, upload hostile-file tests, security review, backup/restore drill, offline credential-loss/revocation policy and retention/accountant review. Before production: documented rollback/forward recovery, encryption/key rotation, monitoring and incident response.

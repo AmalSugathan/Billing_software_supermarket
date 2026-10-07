@@ -1,0 +1,153 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  UV_VERSION: '0.12.23'
+jobs:
+  workflow-lint:
+    name: Workflow validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install checksum-verified actionlint
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/actionlint.tar.gz" \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+      - run: '"$RUNNER_TEMP/actionlint" .github/workflows/ci.yml'
+  backend:
+    name: Backend (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install uv==${{ env.UV_VERSION }}
+      - run: uv sync --locked
+      - run: uv run --locked ruff check .
+      - run: uv run --locked ruff format --check .
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+      - run: npm ci --no-fund
+        working-directory: apps/web
+      - run: npm run typecheck:api
+        working-directory: apps/web
+      - run: uv run --locked pytest -m "not database"
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+  database:
+    name: PostgreSQL migrations and integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pipeline_test
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: pipeline_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pipeline_test -d pipeline_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://pipeline_test:disposable_ci_only@127.0.0.1:5432/pipeline_test
+      REQUIRE_POSTGRES_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install uv==${{ env.UV_VERSION }}
+      - run: uv sync --locked
+      - run: uv run --locked pytest --cov=supermarket --cov-report=term-missing
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+      - run: python -m pip install uv==${{ env.UV_VERSION }}
+      - run: uv sync --locked
+      - run: uv export --locked --no-emit-project --no-hashes --output-file requirements-audit.txt
+      - run: uv run --locked pip-audit --disable-pip --no-deps -r requirements-audit.txt
+      - run: npm ci --no-fund
+        working-directory: apps/web
+      - run: npm audit --audit-level=high
+        working-directory: apps/web
+  containers:
+    name: Container packaging and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - run: docker compose config --quiet
+      - run: docker compose up --build --wait api web
+      - run: curl --fail --retry 5 --retry-delay 2 http://127.0.0.1:8080/api/v1/health/ready
+      - run: curl --fail http://127.0.0.1:8080/
+      - name: Diagnostics
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Stop isolated development stack
+        if: always()
+        run: docker compose down
+  gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [workflow-lint, backend, frontend, database, dependency-audit, containers]
+    timeout-minutes: 5
+    env:
+      JOB_RESULTS: ${{ toJSON(needs) }}
+    steps:
+      - name: Require every job to pass
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          jobs = json.loads(os.environ['JOB_RESULTS'])
+          failed = [name for name, job in jobs.items() if job['result'] != 'success']
+          if failed:
+              print('Required jobs did not pass:', ', '.join(failed))
+              sys.exit(1)
+          print('All required checks passed.')
+          PY

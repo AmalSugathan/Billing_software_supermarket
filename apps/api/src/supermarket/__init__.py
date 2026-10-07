@@ -1,0 +1,1 @@
+"""Supermarket platform application package."""

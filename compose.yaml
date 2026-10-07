@@ -1,0 +1,51 @@
+name: supermarket-development
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: supermarket_dev
+      POSTGRES_USER: supermarket_dev
+      POSTGRES_PASSWORD: local_dev_only
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supermarket_dev -d supermarket_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://supermarket_dev:local_dev_only@database:5432/supermarket_dev
+      MIGRATION_DATABASE_URL: postgresql+psycopg://supermarket_dev:local_dev_only@database:5432/supermarket_dev
+      APP_ENV: development
+    command: ["sh", "-c", "alembic upgrade head && python -m supermarket.dev_database"]
+    depends_on:
+      database: { condition: service_healthy }
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://supermarket_app:local_app_only@database:5432/supermarket_dev
+      COOKIE_SECURE: 'false'
+      APP_ENV: development
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 15
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+volumes:
+  postgres_data:

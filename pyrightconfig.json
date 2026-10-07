@@ -1,0 +1,9 @@
+{
+  "include": ["apps/api/src"],
+  "extraPaths": ["apps/api/src"],
+  "exclude": [".venv", ".bootstrap", ".uv-cache", "apps/web/node_modules"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "strict"
+}
