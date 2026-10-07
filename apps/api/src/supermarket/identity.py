@@ -230,13 +230,17 @@ def permitted_store_ids(connection: Connection, business_id: str, scope: Scope) 
     return [str(value) for value in connection.execute(query).scalars()]
 
 
-def identity_router(engine: Engine | None, settings: Settings) -> APIRouter:
-    router = APIRouter(prefix="/api/v1", tags=["identity"])
+class IdentityAccess:
+    """Shared authentication boundary for all business modules."""
 
-    def database() -> Engine:
-        if engine is None:
+    def __init__(self, engine: Engine | None, settings: Settings) -> None:
+        self.engine = engine
+        self.settings = settings
+
+    def database(self) -> Engine:
+        if self.engine is None:
             raise HTTPException(503, "Database unavailable")
-        with engine.connect() as connection:
+        with self.engine.connect() as connection:
             safe = connection.execute(
                 text("""
                 SELECT NOT (r.rolsuper OR r.rolbypassrls OR EXISTS (
@@ -248,17 +252,17 @@ def identity_router(engine: Engine | None, settings: Settings) -> APIRouter:
             ).scalar()
         if safe is not True:
             raise HTTPException(503, "Configure a non-owner database role with tenant isolation")
-        return engine
+        return self.engine
 
-    def origin(request: Request) -> None:
-        if request.headers.get("origin") not in settings.allowed_origins:
+    def origin(self, request: Request) -> None:
+        if request.headers.get("origin") not in self.settings.allowed_origins:
             raise HTTPException(403, "Request origin is not allowed")
 
-    def actor_for(request: Request, *, mutation: bool = False) -> Actor:
+    def actor_for(self, request: Request, *, mutation: bool = False) -> Actor:
         token = request.cookies.get(COOKIE_NAME, "")
         if not token or len(token) > 128:
             raise HTTPException(401, "Sign in required")
-        with database().begin() as connection:
+        with self.database().begin() as connection:
             row = (
                 connection.execute(
                     select(users.c.id, users.c.email, users.c.display_name)
@@ -278,13 +282,19 @@ def identity_router(engine: Engine | None, settings: Settings) -> APIRouter:
         if row is None:
             raise HTTPException(401, "Session expired or unavailable")
         if mutation:
-            origin(request)
+            self.origin(request)
             if not hmac.compare_digest(
                 request.headers.get("x-csrf-token", "").encode("utf-8"),
                 csrf_token(token).encode("ascii"),
             ):
                 raise HTTPException(403, "Request verification failed")
         return Actor(UserView.model_validate(dict(row)), token)
+
+
+def identity_router(engine: Engine | None, settings: Settings) -> APIRouter:
+    router = APIRouter(prefix="/api/v1", tags=["identity"])
+    access = IdentityAccess(engine, settings)
+    database, origin, actor_for = access.database, access.origin, access.actor_for
 
     def rate_limit(request: Request, email: str, action: str) -> None:
         address = request.client.host if request.client is not None else "unknown"

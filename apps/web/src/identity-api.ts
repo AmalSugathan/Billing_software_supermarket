@@ -28,12 +28,13 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, schema: z.ZodType<T>,
-  options: { method?: string; body?: unknown; csrf?: string; signal?: AbortSignal } = {}): Promise<T> {
+  options: { method?: string; body?: unknown; csrf?: string; signal?: AbortSignal; idempotencyKey?: string } = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch('/api/v1' + path, {
       method: options.method ?? 'GET', credentials: 'same-origin', cache: 'no-store',
-      headers: { 'Content-Type': 'application/json', ...(options.csrf ? { 'X-CSRF-Token': options.csrf } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(options.csrf ? { 'X-CSRF-Token': options.csrf } : {}),
+        ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}) },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000),
     });

@@ -3,7 +3,7 @@
 ## Implemented identity and setup contracts
 GET /api/v1/health/live: process status; independent of database.
 GET /api/v1/health/ready: verifies database connection and the known migration marker; 503 on unavailable/unmigrated database. It does not expose connection strings or raw exceptions.
-GET /openapi.json: actual generated contract. No financial, stock or AI endpoints are implemented yet.
+GET /openapi.json: actual generated contract. Financial posting and AI endpoints are not implemented yet.
 
 All routes below use `/api/v1`. UUID path values and strict request models are validated. Mutations require an allowed `Origin`; authenticated mutations additionally require `X-CSRF-Token` returned by session/login/registration. Requests use the HttpOnly session cookie. Session responses use `Cache-Control: no-store`.
 
@@ -22,6 +22,29 @@ All routes below use `/api/v1`. UUID path values and strict request models are v
 | GET | /businesses/{business_id}/audit | Business-wide audit.read; limit between 1 and 100 |
 
 Business responses include role, capabilities and all_stores. Staff-grant requests cannot grant capabilities the actor lacks. OWNER, ADMIN and ACCOUNTANT memberships are business-wide; operational roles require explicit stores. Duplicate names/memberships return 409. Staff must register before a grant; no email invitation is sent.
+
+## Implemented catalog and inventory
+All paths below follow `/api/v1/businesses/{business_id}` and reuse the identity/Origin/CSRF boundary.
+
+| Method | Path | Behavior |
+|---|---|---|
+| GET/POST | /categories, /brands | Named catalog groups; catalog.manage for creation, business.read for lookup |
+| GET/POST | /suppliers | Supplier contact/GSTIN/payment terms; purchases.manage; no payment or purchase posting |
+| GET/POST | /products | Search name/SKU/aliases with q; creation requires catalog.manage |
+| GET | /products/matches?name=... | Up to 10 fuzzy candidates from latest 2,000 products; catalog.manage |
+| GET | /products/resolve-barcode?value=... | Exact active-product lookup; business.read; missing returns 404 |
+| POST | /products/{product_id}/barcodes | Adds distinct tenant barcode; catalog.manage |
+| GET | /stores/{store_id}/stock | Assigned-store quantities and opening value; inventory.read |
+| GET | /stores/{store_id}/stock-movements | Assigned-store immutable movement history; inventory.read |
+| POST | /stores/{store_id}/opening-stock | Owner actions.approve, assigned store, explicit confirmation, mandatory Idempotency-Key UUID |
+
+Product, supplier, stock and movement list APIs accept limit (1–200, default 50) and offset (0–100000). Categories/brands currently return at most 200. The frontend paginates products; supplier/inventory views state their display limits. Catalog pages fetch barcode/alias details in batches.
+
+Money, percentages and quantities are non-negative decimal strings: money at most two decimal places, quantities three, no exponent/float/NaN/infinity values. Minimum selling price <= selling price <= MRP. Piece/pack counts must be whole numbers. GST/HSN fields store configured invoice values; this increment does not verify legal classification or filing readiness. Cashier product responses return null for purchase/landed costs and target margin rather than revealing costs or inventing zero values.
+
+Product creation rejects existing tenant SKU, barcode or normalized name/unit. Similar names require reviewing `/products/matches` and explicit `confirm_distinct_product`; this cannot override exact uniqueness. Similarity is a deterministic name comparison, not calibrated AI confidence. Product creation never changes stock. Existing-price edits and deactivation are deferred.
+
+Opening body: product_id, quantity, unit_cost, reason, confirmed=true, optional batch_number/expiry_date according to tracking flags. Positive counts are required. Different lots may have separate openings; a previously opened lot requires a future approved correction workflow. Identical request replay returns the original movement (201), changed details with the same key return 409. The response includes movement ID, actor, source, approval and timestamp. Stock, batch and audit commit together. No delete/update/correction endpoint is currently exposed.
 
 ## Planned contracts
 | Module | Routes |

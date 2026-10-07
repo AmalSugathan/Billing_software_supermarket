@@ -1,4 +1,4 @@
-"""Health-only API baseline; operational APIs wait for identity and tenant isolation."""
+"""Phase 1 identity, catalog and immutable inventory foundation."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from supermarket.catalog import catalog_router
 from supermarket.config import Settings
 from supermarket.database import build_engine, database_ready
 from supermarket.identity import identity_router
@@ -46,6 +47,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         return JSONResponse(status_code=503, content={"detail": "Database operation unavailable"})
 
     application.include_router(identity_router(database, configuration))
+    application.include_router(catalog_router(database, configuration))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live(response: Response) -> HealthResponse:

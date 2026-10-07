@@ -33,7 +33,24 @@ def test_postgresql_migration_constraints_rollback_and_readiness() -> None:
     try:
         with admin.begin() as connection:
             connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+        command.upgrade(configuration, "0002_identity_tenancy")
+        existing_business = str(uuid4())
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO business (id, name, currency, timezone) "
+                    "VALUES (:id, 'Existing migration fixture', 'INR', 'Asia/Kolkata')"
+                ),
+                {"id": existing_business},
+            )
         command.upgrade(configuration, "head")
+        with engine.connect() as connection:
+            assert (
+                connection.execute(
+                    text("SELECT name FROM business WHERE id = :id"), {"id": existing_business}
+                ).scalar_one()
+                == "Existing migration fixture"
+            )
         with TestClient(create_app(Settings(), engine)) as client:
             assert client.get("/api/v1/health/ready").status_code == 200
         with pytest.raises(IntegrityError), engine.begin() as connection:

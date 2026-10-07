@@ -23,7 +23,7 @@ describe('development environment status', () => {
     fetchMock.mockImplementation(responses(true));
     await userEvent.click(screen.getByRole('button', { name: 'Check again' }));
     expect(await within(status).findAllByText('available')).toHaveLength(2);
-    expect(screen.getByText(/business modules are not available yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Billing, purchases and expenses are not available yet/)).toBeInTheDocument();
   });
 
   it('does not show success when the server is unreachable', async () => {

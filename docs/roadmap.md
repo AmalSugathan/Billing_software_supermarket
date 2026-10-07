@@ -11,10 +11,10 @@ The user's six-phase sequence is authoritative. Phases are released after their 
 | 5 GST intelligence | Validation, reconciliation, preparation and integration | Accountant-reviewed fixtures and current rules; authorized real integration before filing claims |
 | 6 Predictive AI | Demand, reorder, pricing, expiry, suppliers, cash flow and anomalies | Backtesting, uncertainty, monitoring, data sufficiency and decision safety |
 
-## Current increment: Phase 1 identity and setup
-Delivered after the seven planning documents and development/CI baseline: real account registration/login/logout, business with first store, stores/terminals, seven default roles, scoped staff grants, forced PostgreSQL tenant isolation and immutable audit events. The frontend calls real validated APIs; failed requests do not advance setup. Staff grants require an already-registered account; no external email service is claimed.
+## Current increment: Phase 1 catalog and opening inventory
+Identity/setup is complete as a development increment and its remote CI passed. The second increment adds categories/brands, supplier records, product fields/aliases, multiple barcodes, search, barcode lookup, fuzzy duplicate review, owner-confirmed opening counts, immutable batches/movements and assigned-store inventory views. Money and weighted quantities use decimal strings and PostgreSQL NUMERIC. No AI matching or OCR is claimed before Phase 2.
 
-Local checks now include real PostgreSQL migration round trips, role/tenant/store permission cases, concurrent pool isolation and immutable audit tests. See development-pipeline.md for evidence. Products, stock, purchases, expenses, cash and POS are still outstanding Phase 1 work; the phase is not complete or ready for a live store.
+Opening retries serialize on a tenant/request key; identical replay returns the original movement and changed data is rejected. Duplicate product SKU/barcode/name creation rolls back atomically. Inventory reads and ledger postings enforce business/store permissions independently of the UI. Opening value is recorded opening quantity times cost, not profit or a completed inventory valuation policy. Purchase posting, expenses, corrections, cash, POS and offline reliability remain outstanding; Phase 1 is not ready for a live store.
 
 ## Phase 1 increments
 1. Identity, business/store/terminal setup, membership/capabilities, tenant isolation and audit foundations.

@@ -1,6 +1,6 @@
 # Supermarket operating system
 
-AI-native supermarket platform for Indian retail, developed in six phases. The first Phase 1 increment implements accounts, business/store/terminal setup, staff permissions and immutable audit records against PostgreSQL. POS, products, stock, purchases and expenses follow incrementally; the application is not ready for live billing.
+AI-native supermarket platform for Indian retail, developed in six phases. Phase 1 currently implements accounts, business/store/terminal setup, staff permissions, products/barcodes, suppliers and immutable opening stock against PostgreSQL. POS, purchase posting and expenses follow incrementally; the application is not ready for live billing.
 
 ## Prerequisites
 Python 3.14, Node.js 24, npm and PostgreSQL 17. Docker Desktop with Linux containers is optional for local development and required for container verification. This workspace has portable PostgreSQL and Git under ignored `.tools/`. Use development accounts until the pilot security gates pass. See [real business data](docs/real-data.md) for handling original stock invoices.
@@ -30,7 +30,9 @@ $env:COOKIE_SECURE = 'false' # local loopback HTTP only
 Set-Location apps\web
 npm.cmd run dev
 ```
-Open http://127.0.0.1:5173. Create an account, then a business and its first store. You can add terminals and grant roles to staff who have registered. Business setup and access changes appear in the audit trail. The page also displays actual API/schema health. No sales or AI metrics are fabricated.
+Open http://127.0.0.1:5173. Create an account, then a business and its first store. Add your real products and barcodes; review similar names before creating a distinct product. Add suppliers, then record reviewed physical opening stock from Inventory. Owner confirmation creates an immutable movement with its cost, reason and batch/expiry evidence. Different batches can have separate opening counts; each lot has one opening entry. Retries use the same request key. No sales or AI metrics are fabricated.
+
+Business setup, terminals, staff grants and audit events are under the setup panel. Staff must register before receiving access. Cashiers can search/scan products but cannot see purchase costs or create products. Inventory managers see only assigned-store inventory; opening entries require owner approval. Price editing, corrections and purchase/expense posting are not available yet.
 
 ## PostgreSQL and migrations
 ```powershell
@@ -76,4 +78,4 @@ Dependencies are pinned by `uv.lock` and `apps/web/package-lock.json`. Update th
 
 Repository: https://github.com/AmalSugathan/Billing_software_supermarket. Local commit attribution uses `amalsugathan123@gmail.com`; GitHub authentication is separate from the commit email.
 
-Next Phase 1 increment: products/barcodes, suppliers and immutable stock movements, followed by purchase/expense posting and POS/cashier operations. OCR starts in Phase 2.
+Next Phase 1 increment: purchase/expense posting, followed by POS/cashier operations and durable offline synchronization. Inventory valuation and fiscal rounding policies must be finalized before financial posting. OCR starts in Phase 2.

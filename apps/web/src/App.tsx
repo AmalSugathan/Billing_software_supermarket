@@ -52,12 +52,12 @@ export default function App() {
         </div>
         <button onClick={refresh} disabled={checking}>{checking ? 'Checking…' : 'Check again'}</button>
       </section>
-      <p className="development-note">Account and store setup are available. Billing and inventory business modules are not available yet.</p>
+      <p className="development-note">Setup, products, suppliers and opening stock are available. Billing, purchases and expenses are not available yet.</p>
       <section aria-labelledby="roadmap-heading">
         <div className="section-title"><h2 id="roadmap-heading">The development path</h2><span>Six focused phases</span></div>
         <ol className="phase-grid">{phases.map(([title, description], index) => (
           <li key={title}><div className="phase-top"><span className="number">0{index + 1}</span>
-            <span className="phase-state">{index === 0 ? 'Pipeline in progress' : 'Planned'}</span></div>
+            <span className="phase-state">{index === 0 ? 'Foundation in progress' : 'Planned'}</span></div>
             <h3>{title}</h3><p>{description}</p>
           </li>
         ))}</ol>

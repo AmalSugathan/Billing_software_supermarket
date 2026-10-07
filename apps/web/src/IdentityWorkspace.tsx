@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import OperationsWorkspace from './OperationsWorkspace';
 import { ApiError, request, schemas, type Audit, type Business, type Member, type Session,
   type Store, type Terminal } from './identity-api';
 
@@ -52,6 +53,8 @@ export default function IdentityWorkspace() {
   const [loadedBusiness, setLoadedBusiness] = useState('');
   const business = businesses.find((item) => item.id === selected) ?? businesses[0];
   const businessId = business?.id ?? '';
+  const activeBusiness = useRef(businessId);
+  useEffect(() => { activeBusiness.current = businessId; }, [businessId]);
   const can = useCallback((capability: string) => business?.capabilities.includes(capability) ?? false, [business]);
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export default function IdentityWorkspace() {
     return { stores: newStores, terminals: newTerminals, members: newMembers, audit: newAudit, businessId };
   }, [businessId, can, business?.all_stores]);
   const applyWorkspace = useCallback((data: WorkspaceData | null) => {
-    if (!data) return;
+    if (!data || data.businessId !== activeBusiness.current) return;
     setStores(data.stores); setTerminals(data.terminals); setMembers(data.members); setAudit(data.audit); setLoadedBusiness(data.businessId);
   }, []);
   useEffect(() => {
@@ -171,7 +174,9 @@ export default function IdentityWorkspace() {
         {businesses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label><span className="role-badge">{business.role.replaceAll('_', ' ')}</span>
       <button className="text-button" disabled={pending} onClick={() => setAddingBusiness(true)}>Add business</button></div>
-      {!current ? <p role="status">Loading your store access…</p> : <div className="workspace-grid">
+      {!current ? <p role="status">Loading your store access…</p> : <>
+      <OperationsWorkspace key={businessId} business={business} session={session} stores={stores} onRecorded={async () => applyWorkspace(await loadWorkspace())} />
+      <details className="setup-details"><summary>Business setup, terminals and staff access</summary><div className="workspace-grid">
         <section className="workspace-card"><h3>Stores</h3>{stores.length ? <ul className="record-list">{stores.map((store) => <li key={store.id}><strong>{store.name}</strong><span>{store.address || 'No address recorded'}</span></li>)}</ul> : <p>No stores assigned to this account.</p>}
           {can('stores.manage') && business.all_stores && <form onSubmit={(event) => void createStore(event)}>
             <label>New store name<input name="name" required maxLength={150} /></label><label>Address<input name="address" maxLength={500} /></label>
@@ -197,7 +202,7 @@ export default function IdentityWorkspace() {
           <ul className="record-list">{audit.map((entry) => <li key={entry.id}><strong>{entry.action.replaceAll('.', ' · ')}</strong><span>{new Date(entry.created_at).toLocaleString()} · {entry.source} · actor {entry.actor_user_id}</span></li>)}</ul>
           {!audit.length && <p>No events recorded.</p>}
         </section>}
-      </div>}
+      </div></details></>}
     </>}
   </section>;
 }

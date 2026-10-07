@@ -63,7 +63,8 @@ def postgres_case() -> Generator[PostgreSQLCase]:
             connection.execute(
                 text(
                     f'REVOKE UPDATE, DELETE ON "{schema}".audit_log, '
-                    f'"{schema}".security_event FROM "{role}"'
+                    f'"{schema}".security_event, "{schema}".stock_batch, '
+                    f'"{schema}".stock_movement FROM "{role}"'
                 )
             )
             connection.execute(

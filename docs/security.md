@@ -11,6 +11,13 @@ Audit and security records reject UPDATE/DELETE through privileges and database 
 
 This is a development increment, not a production security certification. TLS termination, encrypted disks/backups, field encryption/key management, MFA, email verification, password recovery, member revocation and administrative session management remain pilot prerequisites. No document upload/OCR endpoint is available yet.
 
+## Catalog and opening-stock controls
+Catalog, supplier, barcode, batch and movement tables force tenant RLS and composite foreign keys. Inventory views check assigned stores on every request. Supplier access requires purchase permissions; cashiers receive null cost/margin fields and cannot write the catalog. All writes enforce the shared authentication/CSRF boundary.
+
+Opening stock requires the owner's actions.approve capability, explicit checked confirmation, a bounded reason and idempotency UUID. Transaction locks serialize replay and product/lot creation; mismatched retries and repeat lot openings fail. Database triggers and runtime privileges prohibit batch/movement UPDATE/DELETE. Approval, original quantity/cost and actor are recorded alongside atomic audit evidence. Direct opening is a human-approved command; no AI agent or background job can call an unrestricted stock-write endpoint.
+
+Future adjustments, price edits, payments and reversals must add their own reviewed authorization/approval contracts rather than bypassing these records. Request keys in this browser flow protect retries during the current page session; this is not offline POS durability or completed-sale synchronization.
+
 ## Phase 1 prerequisites
 Complete MFA for owner/admin, verified invitations, safe member-role changes/revocation, session/rate-counter cleanup and operational approval policies before a public pilot. Schema-scoped grants in production should allow only required operations; the development provisioning helper is not production automation. Health endpoints do not assert that security or financial workflows are production-ready.
 

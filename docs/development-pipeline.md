@@ -1,7 +1,7 @@
 # Development and CI pipeline
 
 ## Scope delivered
-The seven prerequisite documents and development/CI scaffold are saved. Phase 1 now adds real account/session APIs, business/store/terminal setup, seven capability-based roles, scoped staff grants, PostgreSQL tenant isolation and append-only audit records, with a working React setup interface. Catalog, financial posting, POS and AI integrations remain subsequent increments.
+The seven prerequisite documents and development/CI scaffold are saved. Phase 1 now adds real account/session APIs, business/store/terminal setup, seven capability-based roles, scoped staff grants, PostgreSQL tenant isolation and append-only audit records, with a working React setup interface. The second increment adds products/barcodes/aliases, categories/brands, suppliers, fuzzy duplicate review and owner-confirmed immutable opening stock. Financial posting, POS and AI integrations remain subsequent increments.
 
 ## Pipeline
 ```
@@ -37,20 +37,20 @@ No permanent execution-policy change is made. Linux/macOS: sh scripts/check.sh w
 Executed on Windows, 7 October 2026:
 - Backend Ruff lint and formatting passed.
 - Backend strict Pyright: zero errors/warnings.
-- Backend/API/PostgreSQL tests: 25 passed; 97.69% coverage of 432 executable statements. Real PostgreSQL 17.11 exercised migrations, password/session validation, CSRF, throttling, permissions, store scope, tenant/composite-FK isolation, concurrent pooled contexts and append-only records.
+- Backend/API/PostgreSQL tests: 34 passed; 98.67% coverage of 752 executable statements. Real PostgreSQL 17.11 exercised migrations, password/session validation, CSRF, throttling, permissions, store scope, tenant/composite-FK isolation, concurrent pooled contexts, append-only records, exact decimal posting, duplicate prevention, concurrent stock replay, audit-failure rollback and preservation of existing business data through the new migration.
 - Frontend lint and TypeScript checks passed.
-- Frontend tests: 7 passed (health failure/retry, unreachable/invalid API data, signup/business setup, cashier controls/logout and genuine authentication failure).
+- Frontend tests: 11 passed (health failure/retry, unreachable/invalid API data, identity setup, cashier controls, decimal product entry, duplicate review, scanner Enter lookup, stock retry after a lost response and genuine duplicate-supplier failure).
 - Frontend production bundle built successfully.
 - Fresh audits of the updated dependency graphs passed: npm reported zero vulnerabilities and pip-audit reported no known vulnerabilities. Audit observations are time-specific, not guarantees.
 - Combined scripts/check.ps1 -Database passed through an explicitly approved process-scoped invocation, including real PostgreSQL and frontend build.
 - actionlint validated the workflow locally using a checksum-verified official binary.
 
 ## Pending checks and activation
-Portable Git is installed locally; origin is https://github.com/AmalSugathan/Billing_software_supermarket.git. Local attribution uses the requested email. Portable PostgreSQL 17.11 runs on loopback port 55432 with a separately provisioned non-owner runtime role. Neither tool is installed system-wide. Docker is still unavailable locally; container builds/runtime and remote GitHub Actions require their own verification and must not be reported as passed based on local tests.
+Portable Git is installed locally; origin is https://github.com/AmalSugathan/Billing_software_supermarket.git. Local attribution uses the requested email. Portable PostgreSQL 17.11 runs on loopback port 55432 with a separately provisioned non-owner runtime role. Neither tool is installed system-wide. Docker is unavailable locally. The first increment passed every remote GitHub CI job, including container builds/runtime. Each new commit requires its own remote run; local tests do not substitute for remote verification.
 
 CI definitions exercise real PostgreSQL upgrade/downgrade/re-upgrade, identity/RLS integration and HTTP readiness, plus container compose/migration/startup/proxy smoke checks. No SQLite substitute marks the PostgreSQL gate passed. TEST_DATABASE_URL tests create isolated random schemas/non-owner roles and clean up those resources. Use a development admin connection with schema/role-creation permissions.
 
-To activate: authenticate GitHub, push the verified increment, run CI, resolve runner-specific failures, then protect main with the CI gate required. Container and all remote jobs must pass before remote verification is claimed. The workflow does not deploy the application. Replace development credentials and provision production least-privilege roles separately before deployment.
+GitHub is authenticated and the first increment was pushed successfully. Push each verified increment, review its remote CI results, resolve runner-specific failures, and protect main with the CI gate required. Container and all remote jobs must pass before remote verification is claimed. The workflow does not deploy the application. Replace development credentials and provision production least-privilege roles separately before deployment.
 
 ## Next authorized phase boundary
-Identity/setup, capability authorization, tenant-isolation tests and audit form the first completed Phase 1 development increment. Next: catalog/barcodes/suppliers and immutable stock movements, then purchase/expense postings, POS/cashier sessions and offline reliability. OCR remains Phase 2; owner intelligence Phase 3; agents Phase 4; GST intelligence Phase 5; prediction Phase 6.
+Identity/setup, capability authorization, tenant-isolation tests and audit form the first completed Phase 1 development increment. The second increment adds catalog/barcodes/suppliers and immutable opening movements. Next: purchase/expense postings, POS/cashier sessions and offline reliability. OCR remains Phase 2; owner intelligence Phase 3; agents Phase 4; GST intelligence Phase 5; prediction Phase 6.
