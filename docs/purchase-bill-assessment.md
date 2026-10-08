@@ -43,3 +43,14 @@ Originals contain supplier/buyer identifiers, contacts and bank/payment details.
 
 ## User decision, 8 October 2026
 For current development, use clearly labelled synthetic opening counts, expenses, sales/refunds and cash-closing examples in fixtures/demo. Barcode data and physical scanner checks are deferred. Invoice carton and pieces-per-carton details may establish conversions when explicit and reviewed; ambiguous units require confirmation. The synthetic pack examples are not extracted real-invoice mappings. This decision enables development without further data collection; live-store readiness still requires actual counts and operational acceptance checks. No fixture has been posted to the database.
+
+
+## Execution update, 8 October 2026
+The previous assessment describes the state on 7 October. The seven originals
+have since been privately uploaded into the separate original-bill review
+business. The genuine complete PaddleOCR-VL-1.6 CPU pipeline is configured and
+processing them locally; original bytes and model evidence remain encrypted and
+out of Git. No purchase, stock movement or supplier payment is created by OCR.
+See [Phase 2 workflow](phase2-ocr.md) for source-linked human review and approved
+purchase posting. A parser that cannot recognize a product table still allows
+manual source review/entry; absent rows or confidence never authorize a purchase.

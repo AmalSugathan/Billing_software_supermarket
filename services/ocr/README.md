@@ -33,6 +33,6 @@ The encrypted source, latest evidence and advisory header/table draft appear in 
 
 Official references: [PaddleOCR full-pipeline setup](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html), [Python 3.13.16 release/checksums](https://www.python.org/downloads/release/python-31316/).
 
-For the verified CPU setup, use a bounded 7,200-second application timeout; a
-five-line photographed invoice took approximately 23 minutes. Larger or fused
-tables can take longer. The portal remains usable while inference is in progress.
+For the verified CPU setup, use a bounded 7,200-second application timeout; the
+first four recorded CPU attempts took approximately 16, 26, 4 and 20 minutes.
+Larger or fused tables can take longer. The portal remains usable while inference is in progress.

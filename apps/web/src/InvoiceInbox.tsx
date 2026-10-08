@@ -132,7 +132,7 @@ export default function InvoiceInbox({ business, session, stores, suppliers, onP
         <dl>{Object.entries(draft.fields).map(([name, field]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{field.value ?? 'Unavailable or ambiguous'} / confidence unavailable</dd></div>)}</dl>
         <p>Recognized line-total sum: {draft.line_total_sum ?? 'Unavailable'}. Compare every row with the original bill, including carton/piece conversions and free quantities.</p>
         {draft.rows.map((row, index) => <div className="table-scroll" key={index}><p>Source page {row.page}, block {row.block}, row {row.row}</p><table aria-label={'Proposed invoice row ' + (index + 1)}><thead><tr>{row.headers.map((header, column) => <th key={column}>{header}</th>)}</tr></thead><tbody><tr>{row.cells.map((cell, column) => <td key={column}>{cell}</td>)}</tr></tbody></table></div>)}
-        {onPurchase && <button disabled={busy || !draft.rows.length} onClick={() => onPurchase({ draft, storeId, filename: selected.filename })}>Review as purchase</button>}
+        {onPurchase && <button disabled={busy} onClick={() => onPurchase({ draft, storeId, filename: selected.filename })}>Review as purchase</button>}
         <p>These fields do not authorize stock or accounting changes. Approved purchase entry is still required, and supplier payment status is unknown.</p>
       </section>}
       <h4>Find an existing product</h4><p className="hint">Name and pack-size matching searches up to 2,000 active products. Scores are similarity scores, not AI confidence. Verify the pack size and unit against the bill.</p>

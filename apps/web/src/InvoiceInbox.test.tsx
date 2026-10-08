@@ -52,3 +52,18 @@ describe('private invoice inbox', () => {
   });
 
 });
+
+
+it('allows manual source review when OCR has no recognized product table', async () => {
+  const onPurchase = vi.fn();
+  const draft = { document_id: id, attempt_id: id, source_sha256: document.sha256, supplier_candidates: [], fields: {}, rows: [], warnings: ['No supported product table recognized'], line_total_sum: null, posting_allowed: false, review_required: true };
+  const reviewed = { ...document, status: 'review_required', attempt_id: id };
+  const fetchMock = vi.fn(async (path: string) => path.endsWith('/provider') ? json(availability) : path.endsWith('/draft') ? json(draft) : path.endsWith('/' + id) ? json(reviewed) : path.endsWith('/content') ? new Response('synthetic', { headers: { 'Content-Type': 'application/pdf' } }) : json([reviewed]));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<InvoiceInbox business={business} session={session} stores={stores} suppliers={[]} onPurchase={onPurchase} />);
+  await userEvent.click(await screen.findByRole('button', { name: /DEMO.jpg/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Prepare invoice fields for review' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Review as purchase' }));
+  expect(onPurchase).toHaveBeenCalledWith({ draft, storeId: stores[0].id, filename: document.filename });
+  expect(fetchMock.mock.calls.every(([path]) => !path.includes('/purchases') && !path.includes('/stock'))).toBe(true);
+});
