@@ -62,6 +62,7 @@ def test_private_upload_preview_duplicate_scopes_and_immutable_evidence(
         assert outside.get(route + "/" + document["id"] + "/content").status_code == 404
         assert upload(outside, path, other).status_code == 404
         assert client.get(route + "/provider").json()["provider_configured"] is False
+        assert client.get(route + "/" + document["id"] + "/draft").status_code == 409
         assert (
             post(
                 client,
@@ -169,8 +170,14 @@ def test_real_paddle_contract_adapter_and_failed_processing_keep_evidence(
             route = path + "/ocr-documents/" + document["id"] + "/process"
             key, body = str(uuid4()), {"reason": "Synthetic extraction contract test"}
             processed = post(client, route, headers, body, key)
-            assert processed.status_code == 200, processed.text
+            assert processed.status_code == 202, processed.text
+            assert processed.json()["status"] == "processing"
+            processed = client.get(route.removesuffix("/process"))
             assert processed.json()["status"] == "review_required"
+            draft = client.get(route.removesuffix("/process") + "/draft")
+            assert draft.status_code == 200, draft.text
+            assert draft.json()["posting_allowed"] is False
+            assert draft.json()["source_sha256"] == document["sha256"]
             assert processed.json()["evidence"]["pages"][0]["blocks"][0]["confidence"] is None
             assert post(client, route, headers, body, key).json() == processed.json()
             assert (
@@ -184,6 +191,8 @@ def test_real_paddle_contract_adapter_and_failed_processing_keep_evidence(
             )
             Handler.failed = True
             failed = post(client, route, headers, body)
+            assert failed.status_code == 202
+            failed = client.get(route.removesuffix("/process"))
             assert (
                 failed.json()["status"] == "failed"
                 and failed.json()["error_code"] == "service_unavailable"
@@ -303,7 +312,8 @@ def test_crashed_ocr_worker_retains_attempt_and_requires_explicit_retry(
             if not expired:
                 assert response.status_code == 409
             else:
-                assert response.status_code == 200, response.text
+                assert response.status_code == 202, response.text
+                response = client.get(route + "/" + document["id"])
                 assert response.json()["status"] == "failed"
                 with postgres_case.admin.begin() as connection:
                     preserved = (

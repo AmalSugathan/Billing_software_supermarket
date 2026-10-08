@@ -80,7 +80,8 @@ def postgres_case() -> Generator[PostgreSQLCase]:
                     f'"{schema}".offline_sale, "{schema}".offline_consumption, '
                     f'"{schema}".offline_seal, "{schema}".ocr_document, '
                     f'"{schema}".ocr_attempt, "{schema}".ocr_result, '
-                    f'"{schema}".supplier_product_mapping FROM "{role}"'
+                    f'"{schema}".supplier_product_mapping, '
+                    f'"{schema}".ocr_purchase_link FROM "{role}"'
                 )
             )
             connection.execute(

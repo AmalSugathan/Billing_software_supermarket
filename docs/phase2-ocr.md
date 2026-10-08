@@ -61,3 +61,32 @@ The helper prompts for the portal password, uses a separate session and skips or
 
 ## Increment 1 validation
 Real PostgreSQL tests cover encrypted originals, immutable records, duplicate/idempotent uploads, cross-business denial, provider failure and reviewed pack-aware matching. Synthetic localhost HTTP tests verify the official request/response contract, bounded output, missing text and redirect rejection; they do not claim the real Paddle model has run. UI tests cover unavailable provider, plain-text model evidence and explicit mapping approval. The real Edge browser pilot verifies a committed upload with a lost response, same-key replay, decoded image preview, original download, no API caching and no purchase/stock changes. Phase 1 offline checkout/refund/closing browser validation also passes.
+
+## Runtime activation and posting increment
+The owner now requests actual PaddleOCR configuration and execution followed by stock/account updates. First run the full v1.6 pipeline locally and preserve encrypted source evidence. A successful OCR call is not reviewed purchase authorization: all provider confidence remains unavailable, header/row/pack/tax arithmetic must be checked, historical invoices must not be confused with current opening stock, and paid status must never be inferred from invoice totals. Prepare concrete purchase drafts before requesting approval for the exact financial/stock changes. Prefer the existing isolated original-bill business until the owner identifies an operational store and stock cutoff. Posted purchases affect received inventory and supplier payable balances; cash/bank payments require separate evidence and explicit authorization.
+
+Use a separate signed official Python 3.13 runtime on this Windows machine, pinned PaddlePaddle/PaddleOCR dependencies and private model caches. Bind the full-pipeline service to loopback, limit bytes/pages/pixels and concurrency, reject URL inputs, expose readiness only after genuine model initialization, and serialize evidence without model HTML execution. Account for measured CPU latency rather than reporting a configured URL as model readiness. Deployment scripts must never modify Windows Application Control or store originals/model output in Git.
+
+
+### Reviewed source-to-purchase bridge
+
+After genuine OCR completes, use **Prepare invoice fields for review**, then
+**Review as purchase**. The form carries the original/attempt IDs and proposes
+recognized descriptions, quantities, rates and header values. It never selects a
+supplier/product or creates catalog entries automatically. Confirm units, pack
+conversion, missing discounts/free quantities, tax basis/split and round-off;
+unknown fields are not defaulted to zero or one. Find/add verified products and
+suppliers in the normal catalog workflow, with duplicate checking. Keep source
+pack counts separate from stock units and selling prices.
+
+Preview recalculates exact decimal quantities and amounts. **Confirm and post
+purchase** commits the purchase, incoming stock and immutable source approval link
+atomically, which also adds supplier payables to the existing balance reports. It
+does not record payments or alter selling prices. Compare every proposal against
+the retained bill; native PaddleOCR-VL confidence is unavailable, so every field
+requires human confirmation. Table/header variants outside the bounded parser may
+need manual correction. Posting is never driven by extraction alone.
+
+Private original-bill processing uses the isolated review business. Its historical
+purchases are not today's measured opening stock. Do not post into the operational
+store until its identity and opening-stock cutoff are confirmed.

@@ -12,7 +12,7 @@ from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from cryptography.exceptions import InvalidTag
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import Connection, Engine, insert, select
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +37,7 @@ from supermarket.identity import (
     scope_for,
 )
 from supermarket.identity_models import audit_logs
+from supermarket.invoice_draft import InvoiceDraft, propose
 from supermarket.ocr_models import attempts, documents, mappings, results
 from supermarket.ocr_provider import MODEL, OcrEvidence, PaddleLayoutProvider, ProviderFailure
 
@@ -99,7 +100,11 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
     )
     access = IdentityAccess(engine, settings)
     vault = EvidenceVault(settings.ocr_encryption_key) if settings.ocr_encryption_key else None
-    provider = PaddleLayoutProvider(settings.ocr_service_url) if settings.ocr_service_url else None
+    provider = (
+        PaddleLayoutProvider(settings.ocr_service_url, settings.ocr_timeout_seconds)
+        if settings.ocr_service_url
+        else None
+    )
 
     def authorize(
         connection: Connection,
@@ -186,13 +191,16 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
         actor = access.actor_for(request)
         with access.database().begin() as connection:
             authorize(connection, actor, business_id, store_id)
+        health_verified = provider.health() if provider else False
         return {
             "upload_enabled": vault is not None,
             "provider_configured": provider is not None,
             "provider_model": MODEL,
-            "health_verified": False,
+            "health_verified": health_verified,
             "semantic_matching_available": False,
-            "message": "Configured private service; run OCR to verify availability"
+            "message": "Private PaddleOCR-VL-1.6 full pipeline is ready"
+            if health_verified
+            else "Configured private service is not ready; retry after initialization"
             if provider
             else "PaddleOCR service is not configured. Documents can be saved privately, "
             "but extraction is unavailable.",
@@ -394,13 +402,14 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
             )
             return Response(data, media_type=mime, headers=headers)
 
-    @router.post("/{document_id}/process", response_model=DocumentView)
+    @router.post("/{document_id}/process", response_model=DocumentView, status_code=202)
     def process(
         business_id: UUID,
         store_id: UUID,
         document_id: UUID,
         payload: ProcessInput,
         request: Request,
+        background_tasks: BackgroundTasks,
         idempotency_key: Annotated[UUID, Header()],
     ) -> DocumentView:
         actor = access.actor_for(request, mutation=True)
@@ -500,7 +509,8 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                     document_id=str(document_id),
                     provider_model=MODEL,
                     reason=payload.reason,
-                    lease_expires_at=datetime.now(UTC) + timedelta(seconds=240),
+                    lease_expires_at=datetime.now(UTC)
+                    + timedelta(seconds=max(240, settings.ocr_timeout_seconds + 60)),
                     idempotency_key=str(idempotency_key),
                     request_hash=request_hash,
                 )
@@ -513,12 +523,38 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                 attempt_id,
                 {"document_id": str(document_id), "provider_model": MODEL},
             )
+            accepted = presentation(connection, private_row(connection, document_id, store_id))
+        background_tasks.add_task(
+            process_worker,
+            actor,
+            business_id,
+            store_id,
+            document_id,
+            attempt_id,
+            processing,
+            str(record["processing_mime"]),
+            int(str(record["page_count"])),
+        )
+        return accepted
+
+    def process_worker(
+        actor: Actor,
+        business_id: UUID,
+        store_id: UUID,
+        document_id: UUID,
+        attempt_id: str,
+        processing: bytes,
+        mime: str,
+        page_count: int,
+    ) -> None:
+        if provider is None:
+            return
         # Inference holds no pooled database connection and cannot issue financial commands.
         error_code: str | None = None
         extracted: OcrEvidence | None = None
         try:
-            extracted = provider.infer(processing, str(record["processing_mime"]))
-            if len(extracted.pages) != record["page_count"]:
+            extracted = provider.infer(processing, mime)
+            if len(extracted.pages) != page_count:
                 raise ProviderFailure("page_count_mismatch")
         except ProviderFailure as error:
             error_code = error.code
@@ -568,7 +604,23 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                         },
                     )
                 )
-            return presentation(connection, private_row(connection, document_id, store_id), True)
+
+    @router.get("/{document_id}/draft", response_model=InvoiceDraft)
+    def draft(
+        business_id: UUID, store_id: UUID, document_id: UUID, request: Request
+    ) -> InvoiceDraft:
+        actor = access.actor_for(request)
+        with access.database().begin() as connection:
+            authorize(connection, actor, business_id, store_id)
+            record = private_row(connection, document_id, store_id)
+            document = presentation(connection, record, True)
+            if (
+                document.status != "review_required"
+                or document.evidence is None
+                or document.attempt_id is None
+            ):
+                raise HTTPException(409, "A completed real OCR attempt is required before drafting")
+            return propose(document.id, document.attempt_id, document.sha256, document.evidence)
 
     @router.get("/{document_id}/matches", response_model=list[Candidate])
     def matches(

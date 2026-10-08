@@ -85,3 +85,43 @@ describe('reviewed purchases', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Purchase posted successfully; audit refresh failed');
   });
 });
+
+
+it('prefills OCR proposals but requires review of units, discounts and tax basis', async () => {
+  const proposed = (value: string | null) => ({ value, source: value ?? '', confidence: null, requires_review: true as const });
+  const source = { storeId: stores[0].id, filename: 'SYNTHETIC-source.jpg', draft: {
+    document_id: 'document-a', attempt_id: 'attempt-a', source_sha256: 'a'.repeat(64), supplier_candidates: [],
+    fields: { invoice_number: proposed('DEMO-001'), invoice_date: proposed('2026-10-08'), invoice_total: proposed('504.00') },
+    rows: [{ page: 1, block: 1, row: 2, headers: ['Product', 'Qty', 'Rate'], cells: ['Biscuit carton', '2', '240'], fields: {
+      description: proposed('Biscuit carton'), quantity: proposed('2'), unit_rate: proposed('240.00'), gst_rate: proposed('5'),
+    } }], warnings: ['Verify every OCR field'], line_total_sum: null, posting_allowed: false as const, review_required: true as const,
+  } };
+  const fetchMock = vi.fn(async (path: string, options?: RequestInit) => { void options; return path.includes('/products?') ? json([product]) : path.endsWith('/preview') ? json(preview) : json([]); });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<PurchaseWorkspace business={business} session={session} stores={stores} suppliers={suppliers} source={source} onRecorded={vi.fn(async () => {})} />);
+  await screen.findByRole('option', { name: /DEMO biscuit/ });
+  expect(screen.getByLabelText('Supplier invoice number')).toHaveValue('DEMO-001');
+  expect(screen.getByLabelText('Invoice quantity 1')).toHaveValue('2');
+  expect(screen.getByLabelText('Free stock units 1')).toHaveValue('');
+  expect(screen.getByLabelText('Line discount (INR) 1')).toHaveValue('');
+  expect(screen.getByLabelText('Stock units per purchase unit 1')).toHaveValue('');
+  expect(screen.getByLabelText('Invoice prices')).toHaveValue('');
+  expect(screen.getByRole('link', { name: 'Download source bill' })).toHaveAttribute('href', expect.stringContaining('/ocr-documents/document-a/content?original=true'));
+  await userEvent.selectOptions(screen.getByLabelText('Purchase supplier'), suppliers[0].id);
+  await userEvent.selectOptions(screen.getByLabelText('Product for line 1'), product.id);
+  await userEvent.selectOptions(screen.getByLabelText('Purchase unit 1'), 'carton');
+  await userEvent.selectOptions(screen.getByLabelText('Invoice prices'), 'exclusive');
+  await userEvent.selectOptions(screen.getByLabelText('Invoice tax split'), 'intra');
+  await userEvent.type(screen.getByLabelText('Invoice round-off (INR)'), '0');
+  await userEvent.type(screen.getByLabelText('Stock units per purchase unit 1'), '24');
+  await userEvent.type(screen.getByLabelText('Free stock units 1'), '0');
+  await userEvent.type(screen.getByLabelText('Line discount (INR) 1'), '0');
+  await userEvent.type(screen.getByLabelText('Pack conversion evidence 1'), 'Synthetic bill states 24 pieces');
+  await userEvent.type(screen.getByLabelText('Review notes and rounding explanation'), 'Verified synthetic source');
+  await userEvent.click(screen.getByRole('button', { name: 'Review purchase totals' }));
+  await screen.findByRole('table', { name: 'Purchase review quantities and amounts' });
+  const previewCall = fetchMock.mock.calls.find(([path]) => path.endsWith('/preview'));
+  expect(previewCall).toBeDefined();
+  expect(JSON.parse(String(previewCall?.[1]?.body))).toMatchObject({ source_document_id: 'document-a', source_attempt_id: 'attempt-a', confirmed: false });
+  expect(screen.getByRole('button', { name: 'Confirm and post purchase' })).toBeDisabled();
+});

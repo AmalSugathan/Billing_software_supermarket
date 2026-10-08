@@ -24,6 +24,8 @@ from supermarket.identity import (
     permitted_store_ids,
     scope_for,
 )
+from supermarket.ocr_models import attempts, documents, results
+from supermarket.ocr_purchase_models import links
 from supermarket.purchase_models import items, purchases
 
 CENT = Decimal("0.01")
@@ -82,6 +84,14 @@ class PurchaseInput(InputModel):
     review_reason: str = Field(min_length=3, max_length=500)
     lines: list[PurchaseLine] = Field(min_length=1, max_length=200)
     confirmed: bool = Field(default=False, strict=True)
+    source_document_id: UUID | None = None
+    source_attempt_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def complete_source(self) -> PurchaseInput:
+        if bool(self.source_document_id) != bool(self.source_attempt_id):
+            raise ValueError("Invoice document and OCR attempt must be supplied together")
+        return self
 
 
 class CalculatedLine(BaseModel):
@@ -146,6 +156,9 @@ class PurchaseView(PurchaseTotals):
     human_approved: bool
     source: str
     created_at: datetime
+    source_document_id: str | None = None
+    source_attempt_id: str | None = None
+    source_sha256: str | None = None
 
 
 def calculate(payload: PurchaseInput, catalog: dict[str, dict[str, object]]) -> PurchasePreview:
@@ -243,8 +256,22 @@ def purchase_views(connection: Connection, headers: list[dict[str, object]]) -> 
     )
     for row in connection.execute(query).mappings():
         grouped.setdefault(str(row["purchase_id"]), []).append(PostedLine.model_validate(dict(row)))
+    source_links = {
+        row["purchase_id"]: dict(row)
+        for row in connection.execute(
+            select(links).where(links.c.purchase_id.in_([row["id"] for row in headers]))
+        ).mappings()
+    }
     return [
-        PurchaseView.model_validate({**row, "lines": grouped.get(str(row["id"]), [])})
+        PurchaseView.model_validate(
+            {
+                **row,
+                "lines": grouped.get(str(row["id"]), []),
+                "source_document_id": source_links.get(row["id"], {}).get("document_id"),
+                "source_attempt_id": source_links.get(row["id"], {}).get("attempt_id"),
+                "source_sha256": source_links.get(row["id"], {}).get("source_sha256"),
+            }
+        )
         for row in headers
     ]
 
@@ -292,6 +319,43 @@ def purchases_router(engine: Engine | None, settings: Settings) -> APIRouter:
         catalog = {str(row["id"]): dict(row) for row in connection.execute(query).mappings()}
         return dict(supplier), calculate(payload, catalog)
 
+    def reviewed_source(
+        connection: Connection, payload: PurchaseInput, store_id: UUID, *, locked: bool = False
+    ) -> dict[str, object] | None:
+        if payload.source_document_id is None:
+            return None
+        query = select(documents).where(
+            documents.c.id == str(payload.source_document_id),
+            documents.c.store_id == str(store_id),
+        )
+        document = connection.execute(query).mappings().first()
+        if document is None:
+            raise HTTPException(404, "Source invoice unavailable in this store")
+        if locked:
+            connection.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {"key": "ocr-process:" + str(document["business_id"]) + str(document["id"])},
+            )
+        latest = connection.execute(
+            select(attempts.c.id)
+            .where(attempts.c.document_id == document["id"])
+            .order_by(attempts.c.created_at.desc(), attempts.c.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        ready = connection.execute(
+            select(results.c.id).where(
+                results.c.attempt_id == str(payload.source_attempt_id),
+                results.c.status == "review_required",
+            )
+        ).scalar_one_or_none()
+        if latest != str(payload.source_attempt_id) or ready is None:
+            raise HTTPException(409, "Review the latest completed OCR evidence before posting")
+        if connection.execute(
+            select(links.c.id).where(links.c.document_id == document["id"])
+        ).scalar_one_or_none():
+            raise HTTPException(409, "Source invoice already linked to a posted purchase")
+        return dict(document)
+
     @router.post("/preview", response_model=PurchasePreview)
     def preview(
         business_id: UUID, store_id: UUID, payload: PurchaseInput, request: Request
@@ -299,6 +363,7 @@ def purchases_router(engine: Engine | None, settings: Settings) -> APIRouter:
         actor = access.actor_for(request, mutation=True)
         with access.database().begin() as connection:
             authorized(connection, actor, business_id, store_id)
+            reviewed_source(connection, payload, store_id)
             return reviewed_data(connection, payload)[1]
 
     @router.get("", response_model=list[PurchaseView])
@@ -351,7 +416,16 @@ def purchases_router(engine: Engine | None, settings: Settings) -> APIRouter:
             raise HTTPException(422, "Review and explicit confirmation are required before posting")
         request_hash = hashlib.sha256(
             json.dumps(
-                {"store_id": str(store_id), **payload.model_dump(mode="json")}, sort_keys=True
+                {
+                    "store_id": str(store_id),
+                    **payload.model_dump(
+                        mode="json",
+                        exclude={"source_document_id", "source_attempt_id"}
+                        if payload.source_document_id is None
+                        else set(),
+                    ),
+                },
+                sort_keys=True,
             ).encode()
         ).hexdigest()
         actor = access.actor_for(request, mutation=True)
@@ -377,6 +451,7 @@ def purchases_router(engine: Engine | None, settings: Settings) -> APIRouter:
                             409, "Idempotency key already used for different purchase details"
                         )
                     return view(connection, existing["id"])
+                source_document = reviewed_source(connection, payload, store_id, locked=True)
                 supplier, calculated = reviewed_data(connection, payload, locked=True)
                 purchase_id = str(uuid4())
                 identity = "".join(payload.invoice_number.upper().split())
@@ -457,6 +532,21 @@ def purchases_router(engine: Engine | None, settings: Settings) -> APIRouter:
                             movement_id=movement_id,
                             **source,
                             **computed.model_dump(),
+                        )
+                    )
+                if source_document:
+                    connection.execute(
+                        insert(links).values(
+                            id=str(uuid4()),
+                            business_id=str(business_id),
+                            store_id=str(store_id),
+                            document_id=source_document["id"],
+                            attempt_id=str(payload.source_attempt_id),
+                            purchase_id=purchase_id,
+                            source_sha256=source_document["sha256"],
+                            actor_user_id=actor_id,
+                            review_reason=payload.review_reason,
+                            human_approved=True,
                         )
                     )
                 audit(

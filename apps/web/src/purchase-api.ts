@@ -9,7 +9,7 @@ export const previewSchema = z.object({ taxable_total: decimal, cgst: decimal, s
 export const purchaseSchema = previewSchema.extend({ id: z.string(), store_id: z.string(), supplier_id: z.string(),
   supplier_name: z.string(), supplier_gstin: z.string().nullable(), invoice_number: z.string(), invoice_date: z.string(),
   tax_mode: z.string(), tax_kind: z.string(), review_reason: z.string(), actor_user_id: z.string(), human_approved: z.boolean(),
-  source: z.string(), created_at: z.string() });
+  source: z.string(), created_at: z.string(), source_document_id: z.string().nullable().optional(), source_attempt_id: z.string().nullable().optional(), source_sha256: z.string().nullable().optional() });
 export const purchaseSchemas = { preview: previewSchema, purchase: purchaseSchema, purchases: z.array(purchaseSchema) };
 export type PurchasePreview = z.infer<typeof previewSchema>;
 export type Purchase = z.infer<typeof purchaseSchema>;

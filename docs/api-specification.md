@@ -143,3 +143,26 @@ Root `/api/v1/businesses/{business_id}/stores/{store_id}/ocr-documents`:
 | POST | /{id}/mappings | Owner actions.approve, supplier/product/description/reason and confirmed=true; append-only approved alias, no stock mutation |
 
 All routes require purchases.manage except mapping approval, and verify store assignment before evidence access. API responses are no-store/nosniff. Duplicate original content within a store returns 409; original-key retry returns the stored document. Unknown OCR confidence is JSON null with review_required, not fabricated certainty. Failed/expired attempts remain immutable; explicit retry records interrupted-worker resolution in AI-source audit. Structured invoice field extraction/review and linked purchase posting remain pending.
+
+
+### Genuine private OCR and reviewed purchase posting
+
+`POST .../ocr-documents/{document_id}/process` now accepts an idempotent request and
+returns HTTP 202 with `processing`. Poll document detail for `review_required`,
+`failed` or `retry_due`; background inference holds no database connection.
+`GET .../ocr-documents/provider` verifies the pinned model/version at the configured
+loopback worker; configuration alone is not readiness.
+`GET .../ocr-documents/{document_id}/draft` derives unreviewed source-linked header
+and HTML/Markdown table proposals from retained genuine evidence. Missing or
+ambiguous fields stay null. Similarity and confidence remain distinct.
+
+Purchase preview and posting accept optional paired `source_document_id` and
+`source_attempt_id`. The latest attempt must have completed evidence in the same
+store and must not already be posted. Posting requires the existing explicit
+`confirmed=true`, reviewed product IDs, pack conversions and decimal tax/total
+validation. Its transaction also inserts the immutable approval/source link.
+Exact idempotent replays return the original purchase; a second purchase for the
+same original is rejected. Existing manual purchases remain supported. Original
+OCR values can be corrected during human review; the source evidence remains
+immutable and the reviewed payload is audited. This is an approved purchase and
+supplier payable, not evidence of payment or current physical opening stock.

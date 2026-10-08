@@ -85,3 +85,40 @@ def test_provider_never_follows_redirects():
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+@pytest.mark.parametrize(
+    "payload,expected",
+    [
+        (
+            {"status": "ready", "provider_model": "PaddleOCR-VL-1.6", "pipeline_version": "v1.6"},
+            True,
+        ),
+        ({"status": "ready", "provider_model": "other", "pipeline_version": "v1.6"}, False),
+        (
+            {"status": "loading", "provider_model": "PaddleOCR-VL-1.6", "pipeline_version": "v1.6"},
+            False,
+        ),
+        ({"status": "ready", "provider_model": "PaddleOCR-VL-1.6"}, False),
+    ],
+)
+def test_readiness_requires_full_pipeline_identity(payload, expected):
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_GET(self):
+            assert self.path == "/health/ready"
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json.dumps(payload).encode())
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        assert PaddleLayoutProvider(f"http://127.0.0.1:{server.server_port}").health() is expected
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

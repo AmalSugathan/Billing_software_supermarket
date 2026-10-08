@@ -73,3 +73,10 @@ Five offline tables hold leases, reserved batch quantity/cost/catalog snapshots,
 The user deferred physical stock, staff and hardware acceptance to the final build and authorized Phase 2. See [Phase 2 architecture and increment plan](phase2-ocr.md) for encrypted document intake, real PaddleOCR provider boundaries, confidence/evidence review and purchase-posting gates. Physical acceptance remains required before live use. OCR and document uploads never silently create products, change prices or update stock.
 
 Migration 0009 installs `ocr_document` (AES-GCM original/derivative bytes and authenticated scope), `ocr_attempt` (lease/provider/request/reason), `ocr_result` (immutable terminal evidence/failure) and `supplier_product_mapping` (approved supplier description/product/source). All have forced business RLS, composite store/business/source FKs and immutable triggers; the runtime role cannot update/delete them. Unique business/request keys reject altered replay, store/content hashes reject repeated originals and one result per attempt prevents ambiguous completion. Stock and purchase schemas are untouched. Database and encryption-key recovery are separate requirements.
+
+
+Migration 0010 adds `ocr_purchase_link`: immutable human approval, invoice SHA-256,
+reviewed OCR attempt and purchase, with composite business/store foreign keys and
+forced tenant RLS. One original can link to only one posted purchase. The existing
+purchase, stock movements and source link commit together. No cash/bank movement is
+created. Reversals preserve the link and source evidence for forward correction.

@@ -57,3 +57,14 @@ Offline grants last at most eight hours or the next India-day boundary, whicheve
 
 ## Phase 2 development decision
 The user deferred physical stock, staff and hardware acceptance to the final build and authorized Phase 2. See [Phase 2 architecture and increment plan](phase2-ocr.md) for encrypted document intake, real PaddleOCR provider boundaries, confidence/evidence review and purchase-posting gates. Physical acceptance remains required before live use. OCR and document uploads never silently create products, change prices or update stock.
+
+
+The optional OCR worker binds to loopback, accepts only bounded Base64 document
+bytes and validates shared image/PDF limits. It has no database, payment or price
+permissions. Pin and audit its Python 3.13/Paddle dependencies separately from the
+Python 3.14 API. Native CPU inference is serialized and private files stay in
+ignored local storage. This development worker does not claim OS-level resource
+isolation or antivirus certification. Source-to-purchase approval uses the same
+per-document transaction lock as OCR attempts, immutable source hashes, tenant
+RLS and duplicate source/invoice constraints; failed financial validation rolls
+back purchase, stock and source linkage together.

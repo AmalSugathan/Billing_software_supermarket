@@ -18,7 +18,9 @@ test('private invoice intake: lost response replay, source preview and no stock 
   const path = base + '/stores/' + stores[0].id;
   await page.reload();
   await page.getByRole('button', { name: 'Invoice inbox', exact: true }).click();
-  await expect(page.getByText(/PaddleOCR service is not configured/)).toBeVisible();
+  const availabilityResponse = await context.request.get(path + '/ocr-documents/provider');
+  const availability = await availabilityResponse.json() as { message: string; provider_configured: boolean };
+  await expect(page.getByRole('status').filter({ hasText: availability.message })).toBeVisible();
   const image = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 200;
     const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 400, 200); ctx.fillStyle = '#000000'; ctx.font = '20px sans-serif'; ctx.fillText('DEMO synthetic bill 50.00', 20, 60);
@@ -41,7 +43,9 @@ test('private invoice intake: lost response replay, source preview and no stock 
   const preview = page.getByAltText('Supplier invoice source for human review');
   await expect(preview).toBeVisible();
   await expect.poll(() => preview.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
-  await expect(page.getByRole('button', { name: 'Run private OCR', exact: true })).toBeDisabled();
+  const runOcr = page.getByRole('button', { name: 'Run private OCR', exact: true });
+  if (availability.provider_configured) await expect(runOcr).toBeEnabled();
+  else await expect(runOcr).toBeDisabled();
   const documentsResponse = await context.request.get(path + '/ocr-documents');
   expect(documentsResponse.headers()['cache-control']).toBe('no-store');
   const documents = await documentsResponse.json() as { id: string; status: string; data_origin: string }[];

@@ -32,4 +32,23 @@ describe('private invoice inbox', () => {
     expect(screen.getByRole('button', { name: 'Approve supplier description mapping' })).toBeDisabled();
     expect(screen.getByLabelText('I checked the product, pack size and unit against this invoice.')).toBeRequired();
   });
+  it('returns a background processing state and polls without reposting or reloading source bytes', async () => {
+    let started = false;
+    const completed = { ...document, status: 'review_required', evidence: { provider_model: 'PaddleOCR-VL-1.6', document_class: 'unclassified', classification_confidence: null, review_required: true, pages: [{ page_number: 1, markdown: 'Unreviewed synthetic extracted bill', blocks: [] }] } };
+    const fetchMock = vi.fn(async (path: string, options?: RequestInit) => {
+      if (path.endsWith('/provider')) return json({ ...availability, provider_configured: true, health_verified: true });
+      if (path.endsWith('/process')) { started = true; return json({ ...document, status: 'processing' }); }
+      if (path.endsWith('/' + id)) return json(started ? completed : document);
+      if (path.endsWith('/content')) return new Response('synthetic', { headers: { 'Content-Type': 'application/pdf' } });
+      expect(options?.method).not.toBe('POST'); return json([document]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<InvoiceInbox business={business} session={session} stores={stores} suppliers={[]} />);
+    await userEvent.click(await screen.findByRole('button', { name: /DEMO.jpg/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Run private OCR' }));
+    expect(await screen.findByText('Unreviewed synthetic extracted bill', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([path]) => path.endsWith('/process'))).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([path]) => path.endsWith('/content'))).toHaveLength(1);
+  });
+
 });

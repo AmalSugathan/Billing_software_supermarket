@@ -11,6 +11,7 @@ class Settings:
     session_hours: int = 8
     ocr_encryption_key: str | None = None
     ocr_service_url: str | None = None
+    ocr_timeout_seconds: int = 180
     allowed_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
         "http://localhost:5173",
@@ -35,10 +36,14 @@ class Settings:
             or any(not item.startswith("https://") or "*" in item for item in origins)
         ):
             raise ValueError("Production requires secure cookies and explicit HTTPS origins")
+        ocr_timeout = int(os.environ.get("OCR_TIMEOUT_SECONDS", "180"))
+        if not 30 <= ocr_timeout <= 7200:
+            raise ValueError("OCR timeout must be between 30 and 7200 seconds")
         return cls(
             database_url=os.environ.get("DATABASE_URL") or None,
             ocr_encryption_key=os.environ.get("OCR_ENCRYPTION_KEY") or None,
             ocr_service_url=os.environ.get("OCR_SERVICE_URL") or None,
+            ocr_timeout_seconds=ocr_timeout,
             cookie_secure=secure,
             allowed_origins=origins,
         )

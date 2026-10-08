@@ -42,6 +42,12 @@ class OcrEvidence(BaseModel):
     review_required: Literal[True] = True
 
 
+class ReadyHealth(BaseModel):
+    status: Literal["ready"]
+    provider_model: Literal["PaddleOCR-VL-1.6"]
+    pipeline_version: Literal["v1.6"]
+
+
 class RawBlock(BaseModel):
     model_config = {"allow_inf_nan": False}
     block_label: str = Field(default="unknown", max_length=100)
@@ -85,7 +91,7 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class PaddleLayoutProvider:
-    def __init__(self, service_url: str):
+    def __init__(self, service_url: str, timeout_seconds: int = 180):
         address = urlparse(service_url)
         if (
             address.scheme != "http"
@@ -97,7 +103,24 @@ class PaddleLayoutProvider:
             or address.path not in {"", "/"}
         ):
             raise ValueError("This first OCR adapter requires a trusted loopback HTTP service root")
+        if not 30 <= timeout_seconds <= 7200:
+            raise ValueError("OCR timeout must be between 30 and 7200 seconds")
+        self.timeout_seconds = timeout_seconds
         self.url = service_url.rstrip("/") + "/layout-parsing"
+
+    def health(self) -> bool:
+        try:
+            request = Request(  # noqa: S310 -- same validated private loopback service
+                self.url.removesuffix("/layout-parsing") + "/health/ready", method="GET"
+            )
+            with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=2) as response:  # noqa: S310
+                body = response.read(4097)
+            if len(body) > 4096:
+                return False
+            ReadyHealth.model_validate_json(body)
+            return True
+        except ProviderFailure, HTTPError, URLError, TimeoutError, OSError, ValueError:
+            return False
 
     def infer(self, content: bytes, mime: str) -> OcrEvidence:
         payload = {
@@ -116,7 +139,7 @@ class PaddleLayoutProvider:
         )  # noqa: S310 -- fixed validated loopback endpoint
         try:
             with build_opener(ProxyHandler({}), NoRedirect()).open(
-                request, timeout=180
+                request, timeout=self.timeout_seconds
             ) as response:  # noqa: S310
                 body = response.read(MAX_OUTPUT + 1)
             if len(body) > MAX_OUTPUT:

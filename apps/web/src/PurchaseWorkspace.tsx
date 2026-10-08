@@ -1,3 +1,4 @@
+import type { PurchaseSource } from './ocr-api';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { request, type Business, type Session, type Store } from './identity-api';
 import { operations, type Product, type Supplier } from './operations-api';
@@ -9,14 +10,16 @@ const rate = '[0-9]{1,12}(\\.[0-9]{1,6})?';
 const value = (form: FormData, name: string) => String(form.get(name) ?? '').trim();
 const message = (error: unknown) => error instanceof Error ? error.message : 'Purchase could not be recorded.';
 
-export default function PurchaseWorkspace({ business, session, stores, suppliers, onRecorded }: {
-  business: Business; session: Session; stores: Store[]; suppliers: Supplier[]; onRecorded: () => Promise<void>;
+export default function PurchaseWorkspace({ business, session, stores, suppliers, onRecorded, source = null, onClearSource }: {
+  business: Business; session: Session; stores: Store[]; suppliers: Supplier[]; onRecorded: () => Promise<void>; source?: PurchaseSource | null; onClearSource?: () => void;
 }) {
   const base = '/businesses/' + business.id;
-  const [storeId, setStoreId] = useState(stores[0]?.id ?? '');
+  const [storeId, setStoreId] = useState(source?.storeId ?? stores[0]?.id ?? '');
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [rows, setRows] = useState([crypto.randomUUID()]);
+  const [rows, setRows] = useState(() => source?.draft.rows.length ? source.draft.rows.map(() => crypto.randomUUID()) : [crypto.randomUUID()]);
+  const [proposals] = useState(() => Object.fromEntries(rows.map((id, index) => [id, source?.draft.rows[index]?.fields])));
+  const proposed = (id: string, field: string, fallback = '') => proposals[id]?.[field]?.value ?? fallback;
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<PurchasePreview | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -50,7 +53,7 @@ export default function PurchaseWorkspace({ business, session, stores, suppliers
   function body() {
     if (!formRef.current) throw new Error('Purchase form unavailable.');
     const form = new FormData(formRef.current);
-    return { supplier_id: value(form, 'supplier_id'), invoice_number: value(form, 'invoice_number'),
+    return { ...(source ? { source_document_id: source.draft.document_id, source_attempt_id: source.draft.attempt_id } : {}), supplier_id: value(form, 'supplier_id'), invoice_number: value(form, 'invoice_number'),
       invoice_date: value(form, 'invoice_date'), tax_mode: value(form, 'tax_mode'), tax_kind: value(form, 'tax_kind'),
       round_off: value(form, 'round_off'), invoice_total: value(form, 'invoice_total'), review_reason: value(form, 'review_reason'), confirmed: false,
       lines: rows.map((id) => ({ product_id: value(form, id + ':product_id'), supplier_description: value(form, id + ':supplier_description'),
@@ -87,35 +90,36 @@ export default function PurchaseWorkspace({ business, session, stores, suppliers
     });
   }
   return <section className="workspace-card"><h4>Reviewed purchase entry</h4>
-    <p className="hint">Enter the supplier bill, match existing products and review stock quantities before posting. Prices stay unchanged. Payments and purchase returns are not available in this increment.</p>
+    <p className="hint">Enter the supplier bill, match existing products and review stock quantities before posting. Prices stay unchanged. Posting adds supplier payables; it does not record a supplier payment.</p>
+    {source && <section><h5>Original bill: {source.filename}</h5><p>All OCR values are unreviewed. Check the source, select existing products and suppliers, and enter confirmed stock units, conversions, discounts and free quantities. No product is created automatically.</p><a href={'/api/v1' + base + '/stores/' + source.storeId + '/ocr-documents/' + source.draft.document_id + '/content?original=true'} download>Download source bill</a><img src={'/api/v1' + base + '/stores/' + source.storeId + '/ocr-documents/' + source.draft.document_id + '/content'} alt="Original invoice for purchase review" className="invoice-source-preview" /><ul>{source.draft.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul><button disabled={pending} onClick={onClearSource}>Clear invoice proposal</button></section>}
     {error && <p role="alert" className="form-error">{error}</p>}{notice && <p role="status" className="success-notice">{notice}</p>}
-    <label>Purchase store<select value={storeId} disabled={pending} onChange={(event) => { setStoreId(event.target.value); setOffset(0); setPurchases([]); invalidate(); }}>{stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+    <label>Purchase store<select value={storeId} disabled={pending || source !== null} onChange={(event) => { setStoreId(event.target.value); setOffset(0); setPurchases([]); invalidate(); }}>{stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
     {!storeId ? <p>No stores assigned.</p> : <>
       <form className="search-row" onSubmit={(event) => void search(event)}><label>Find purchase product by name or SKU<input name="q" maxLength={180} /></label><button disabled={pending}>Find products</button></form>
       <form ref={formRef} onSubmit={(event) => void review(event)} onChange={invalidate}>
         <fieldset disabled={pending} className="form-grid"><legend>Supplier invoice</legend>
           <label>Purchase supplier<select name="supplier_id" required><option value="">Select supplier</option>{suppliers.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label>Supplier invoice number<input name="invoice_number" required maxLength={100} /></label>
-          <label>Supplier invoice date<input name="invoice_date" type="date" required /></label>
-          <label>Invoice prices<select name="tax_mode"><option value="exclusive">Exclude GST</option><option value="inclusive">Include GST</option></select></label>
-          <label>Invoice tax split<select name="tax_kind"><option value="intra">CGST + SGST</option><option value="inter">IGST</option></select></label>
-          <label>Printed invoice total (INR)<input name="invoice_total" required inputMode="decimal" pattern={amount} /></label>
-          <label>Invoice round-off (INR)<input name="round_off" required inputMode="decimal" pattern="-?[0-1](\\.[0-9]{1,2})?" defaultValue="0" /></label>
+          <label>Supplier invoice number<input name="invoice_number" required maxLength={100} defaultValue={source?.draft.fields.invoice_number?.value ?? ''} /></label>
+          <label>Supplier invoice date<input name="invoice_date" type="date" required defaultValue={source?.draft.fields.invoice_date?.value ?? ''} /></label>
+          <label>Invoice prices<select name="tax_mode" required defaultValue={source ? '' : 'exclusive'}>{source && <option value="">Confirm price tax basis</option>}<option value="exclusive">Exclude GST</option><option value="inclusive">Include GST</option></select></label>
+          <label>Invoice tax split<select name="tax_kind" required defaultValue={source ? '' : 'intra'}>{source && <option value="">Confirm tax split</option>}<option value="intra">CGST + SGST</option><option value="inter">IGST</option></select></label>
+          <label>Printed invoice total (INR)<input name="invoice_total" required inputMode="decimal" pattern={amount} defaultValue={source?.draft.fields.invoice_total?.value ?? ''} /></label>
+          <label>Invoice round-off (INR)<input name="round_off" required inputMode="decimal" pattern="-?[0-1](\\.[0-9]{1,2})?" defaultValue={source ? '' : '0'} /></label>
           <label className="full-width">Review notes and rounding explanation<textarea name="review_reason" required minLength={3} maxLength={500} /></label>
         </fieldset>
         {rows.map((id, index) => {
           const product = products.find((item) => item.id === selected[id]);
           return <fieldset key={id} disabled={pending} className="form-grid"><legend>Invoice line {index + 1}</legend>
             <label>Product for line {index + 1}<select name={id + ':product_id'} value={selected[id] ?? ''} required onChange={(event) => setSelected({ ...selected, [id]: event.target.value })}><option value="">Select existing product</option>{products.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name} / {item.sku} ({item.unit})</option>)}</select></label>
-            <label>Supplier description {index + 1}<input name={id + ':supplier_description'} required maxLength={250} /></label>
-            <label>Purchase unit {index + 1}<select name={id + ':purchase_unit'}>{['pcs', 'pack', 'carton', 'bag', 'kg', 'g', 'l', 'ml'].map((unit) => <option key={unit}>{unit}</option>)}</select></label>
-            <label>Invoice quantity {index + 1}<input name={id + ':purchase_quantity'} required inputMode="decimal" pattern={quantity} /></label>
-            <label>Stock units per purchase unit {index + 1}<input name={id + ':units_per_purchase'} required inputMode="decimal" pattern={quantity} defaultValue="1" /></label>
-            <label>Free stock units {index + 1}<input name={id + ':free_stock_quantity'} required inputMode="decimal" pattern={quantity} defaultValue="0" /></label>
-            <label>Rate per purchase unit (INR) {index + 1}<input name={id + ':unit_rate'} required inputMode="decimal" pattern={rate} /></label>
-            <label>Line discount (INR) {index + 1}<input name={id + ':discount'} required inputMode="decimal" pattern={amount} defaultValue="0" /></label>
-            <label>Invoice GST rate (%) {index + 1}<input name={id + ':gst_rate'} required inputMode="decimal" pattern={amount} /></label>
-            <label>Invoice HSN {index + 1}<input name={id + ':hsn'} pattern="[0-9]{4}|[0-9]{6}|[0-9]{8}" /></label>
+            <label>Supplier description {index + 1}<input name={id + ':supplier_description'} required maxLength={250} defaultValue={proposed(id, 'description')} /></label>
+            <label>Purchase unit {index + 1}<select name={id + ':purchase_unit'} required defaultValue={source ? '' : 'pcs'}>{source && <option value="">Confirm purchase unit</option>}{['pcs', 'pack', 'carton', 'bag', 'kg', 'g', 'l', 'ml'].map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+            <label>Invoice quantity {index + 1}<input name={id + ':purchase_quantity'} required inputMode="decimal" pattern={quantity} defaultValue={proposed(id, 'quantity')} /></label>
+            <label>Stock units per purchase unit {index + 1}<input name={id + ':units_per_purchase'} required inputMode="decimal" pattern={quantity} defaultValue={source ? '' : '1'} /></label>
+            <label>Free stock units {index + 1}<input name={id + ':free_stock_quantity'} required inputMode="decimal" pattern={quantity} defaultValue={proposed(id, 'free_quantity', source ? '' : '0')} /></label>
+            <label>Rate per purchase unit (INR) {index + 1}<input name={id + ':unit_rate'} required inputMode="decimal" pattern={rate} defaultValue={proposed(id, 'unit_rate')} /></label>
+            <label>Line discount (INR) {index + 1}<input name={id + ':discount'} required inputMode="decimal" pattern={amount} defaultValue={proposed(id, 'discount_amount', source ? '' : '0')} /></label>
+            <label>Invoice GST rate (%) {index + 1}<input name={id + ':gst_rate'} defaultValue={proposed(id, 'gst_rate')} required inputMode="decimal" pattern={amount} /></label>
+            <label>Invoice HSN {index + 1}<input name={id + ':hsn'} defaultValue={proposed(id, 'hsn')} pattern="[0-9]{4}|[0-9]{6}|[0-9]{8}" /></label>
             {product?.batch_tracking && <label>Purchase batch {index + 1}<input name={id + ':batch_number'} required maxLength={100} /></label>}
             {product?.expiry_tracking && <label>Purchase expiry {index + 1}<input name={id + ':expiry_date'} required type="date" /></label>}
             <label className="full-width">Pack conversion evidence {index + 1}<textarea name={id + ':conversion_evidence'} required minLength={3} maxLength={500} /></label>
@@ -129,7 +133,7 @@ export default function PurchaseWorkspace({ business, session, stores, suppliers
       {preview && <section aria-label="Purchase review"><h4>Confirm invoice and stock</h4>
         <div className="table-scroll"><table><caption>Purchase review quantities and amounts</caption><thead><tr><th>Line</th><th>Product</th><th>Incoming stock</th><th>Taxable value</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr></thead><tbody>{preview.lines.map((line) => <tr key={line.line_number}><td>{line.line_number}</td><td>{line.product_name}</td><td>{line.stock_quantity} {line.stock_unit}</td><td>{line.taxable_value}</td><td>{line.cgst}</td><td>{line.sgst}</td><td>{line.igst}</td><td>{line.line_total}</td></tr>)}</tbody></table></div>
         <p>Invoice total: INR {preview.invoice_total}. Round-off: INR {preview.round_off}.</p>
-        <label className="checkbox-label"><input type="checkbox" disabled={pending} checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />I reviewed this invoice, product matches and pack conversions. Post purchase and incoming stock.</label>
+        <label className="checkbox-label"><input type="checkbox" disabled={pending} checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />I reviewed this invoice, product matches and pack conversions. Post purchase, incoming stock and supplier payables. No supplier payment.</label>
         <button disabled={pending || !confirmed} onClick={() => void post()}>Confirm and post purchase</button>
       </section>}
       <h4>Posted purchases</h4><p className="hint">Up to 50 per page. Amounts are purchase invoices, not recorded supplier payments. Supplier options show the first 200 suppliers.</p>

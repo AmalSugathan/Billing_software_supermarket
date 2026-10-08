@@ -111,6 +111,8 @@ jobs:
       - run: uv sync --locked
       - run: uv export --locked --no-emit-project --no-hashes --output-file requirements-audit.txt
       - run: uv run --locked pip-audit --disable-pip --no-deps -r requirements-audit.txt
+      - run: uv export --project services/ocr --locked --no-emit-project --no-hashes --output-file ocr-requirements-audit.txt
+      - run: uv run --locked pip-audit --disable-pip --no-deps -r ocr-requirements-audit.txt
       - run: npm ci --no-fund
         working-directory: apps/web
       - run: npm audit --audit-level=high
