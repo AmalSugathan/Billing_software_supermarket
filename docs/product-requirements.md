@@ -41,3 +41,6 @@ INR and Asia/Kolkata; one pilot store with multi-store schema; Python API, React
 
 ## Performance and release
 Provisional scan-to-cart p95 <100 ms and local commit p95 <500 ms on agreed hardware. Measure with realistic catalogs and concurrent terminals. Every phase has migrations, validated APIs, usable frontend, permission checks, meaningful tests, edge cases and updated docs. External integrations must report unavailable status until configured.
+
+## Current foundation pilot boundary
+The operational implementation now includes returns/cancellation, controlled reversals/count corrections and prepared offline cash tills. This pilot is fixed-price/local retail; customer credit, interstate/customer-tax receipts, automatic gateways and used-goods partial supplier returns are unsupported. Offline stock quotas, short-lived grants, device encryption, ordered receipt replay and explicit finalization are implemented. Browser reload/network outage recovery is tested; production device/power-loss durability remains an acceptance gate. Owner dashboards/profit/AI briefings remain Phase 3; original-bill OCR/matching remain Phase 2.

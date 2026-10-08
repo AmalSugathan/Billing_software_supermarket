@@ -54,3 +54,8 @@ GitHub is authenticated and the first increment was pushed successfully. Push ea
 
 ## Next authorized phase boundary
 Identity/setup, capability authorization, tenant-isolation tests and audit form the first completed Phase 1 development increment. The second increment adds catalog/barcodes/suppliers and immutable opening movements. Next: purchase/expense postings, POS/cashier sessions and offline reliability. OCR remains Phase 2; owner intelligence Phase 3; agents Phase 4; GST intelligence Phase 5; prediction Phase 6.
+
+## Current Phase 1 pilot pipeline
+The latest increments add corrections (0007) and prepared offline tills (0008). Run `scripts/check.ps1 -Database` for lint/format, the real PostgreSQL regression suite/coverage, API/frontend types, frontend tests and production build. The new **Offline browser pilot** remote job starts the real container stack and uses Chromium to disconnect/reload a prepared till, retain a saved cash receipt, drop a committed sync response, replay once, finalize, refund, close and time twenty synthetic checkout requests. It is required by CI gate. Windows local validation uses installed Edge via PILOT_BROWSER_CHANNEL=msedge; Playwright is a dev-only dependency.
+
+Run `npm.cmd --prefix apps/web run test:e2e` against built loopback port 8080 (preview proxies to API port 8000). Vite development port 5173 does not cache its HMR shell; the preparation UI directs users to the built app. Test data is isolated, explicitly synthetic and created through actual APIs. Traces stay private/ignored. See pilot-validation.md for measured evidence and remaining operator/production gates; no production load/hardware claim follows from a local synthetic test.

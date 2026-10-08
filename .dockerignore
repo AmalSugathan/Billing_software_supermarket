@@ -19,3 +19,6 @@ data
 
 # Original supplier bills are private source evidence.
 Purchase_Bills_Demo/
+
+**/test-results
+**/playwright-report

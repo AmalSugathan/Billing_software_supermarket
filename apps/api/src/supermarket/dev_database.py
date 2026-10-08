@@ -36,7 +36,11 @@ def main() -> None:
                 "stock_movement, purchase, purchase_item, financial_account, cash_session, "
                 "financial_movement, expense, expense_reversal, cash_closing, "
                 "sales_invoice, sales_item, sales_stock_allocation, "
-                "sales_payment, supplier_payment FROM supermarket_app"
+                "sales_payment, supplier_payment, credit_note, credit_item, "
+                "credit_stock_allocation, "
+                "credit_refund, supplier_payment_reversal, purchase_reversal, "
+                "purchase_reversal_item, stock_adjustment, offline_lease, offline_reservation, "
+                "offline_sale, offline_consumption, offline_seal FROM supermarket_app"
             )
         )
         connection.execute(

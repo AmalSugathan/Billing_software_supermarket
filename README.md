@@ -78,9 +78,16 @@ Dependencies are pinned by `uv.lock` and `apps/web/package-lock.json`. Update th
 
 Repository: https://github.com/AmalSugathan/Billing_software_supermarket. Local commit attribution uses `amalsugathan123@gmail.com`; GitHub authentication is separate from the commit email.
 
-Next Phase 1 increment: POS/tenders/returns and supplier payments, followed by durable offline synchronization. Paid expense/cash account/session behavior is documented in docs/expense-cash.md. Purchase arithmetic and supported invoice limitations are documented in docs/purchase-entry.md. Final valuation/COGS and tax-credit treatment remain prerequisites before POS/profit reporting. OCR starts in Phase 2. Synthetic operational reference CSVs are in fixtures/demo; no fixture or real bill has been automatically imported.
+Current Phase 1 work includes operational posting, controlled corrections and the automated offline pilot. See [pilot validation](docs/pilot-validation.md) for evidence and remaining store/production gates. Original bills are private and unimported; OCR starts in Phase 2. Synthetic references are in fixtures/demo and the isolated walkthrough is available in the UI.
 
 ## Online billing and invoice payments
 Open **POS billing** in Store operations, choose a terminal, search/add products, review quantities/discounts, add cash/UPI/card payment splits and confirm checkout. Cash needs your own open drawer. Receipts can be reprinted with browser printing; thermal hardware has not been verified. **Supplier payments** lists reviewed invoices with paid/outstanding amounts and lets owners explicitly approve a payment against an invoice. These flows use real PostgreSQL stock/money ledgers, not UI mock results. See [POS and payments](docs/pos-payments.md).
 
 A separate synthetic walkthrough can be created locally with `.venv/Scripts/python.exe scripts/seed_phase1_demo.py --email YOUR_EMAIL`. It asks for the portal password without saving it, refuses to add another identically named demo business, and never touches an existing shop's stock. Select **DEMO Phase 1 walkthrough** after refreshing the portal. This example has a INR 305 split-payment receipt, two paid expenses, a 51-piece carton purchase and a partial supplier payment. It intentionally does not seed refunds/closing because those reference CSVs describe a broader future acceptance scenario. Original bills are not imported by this script.
+
+## Corrections and offline pilot
+Owners can open **Corrections & returns** to calculate/refund returned goods, cancel full receipts, reverse payments/unused purchases and approve physical-count deltas. Original documents remain immutable.
+
+For offline use, open the built app at http://127.0.0.1:8080 (or Docker Compose), prepare your open cash till through **Offline preparation**, then open `/offline-pos`. New offline sales use fixed prepared prices, cash and reserved quotas. Protect the device passphrase/export encrypted journals; synchronize/finalize before closing. Port 5173 is the development UI and does not provide a production offline shell. Physical hardware, true crash/power-loss acceptance and production security/backup configuration remain release gates.
+
+Run `npm.cmd --prefix apps/web run test:e2e` against the running built app/API; Windows can set `PILOT_BROWSER_CHANNEL=msedge`. Remote CI adds **Offline browser pilot** to its required gate. No live deployment occurs.

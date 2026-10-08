@@ -3,7 +3,7 @@
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-SCHEMA_REVISION = "0006_pos_payments"
+SCHEMA_REVISION = "0008_offline"
 
 
 def build_engine(database_url: str) -> Engine:

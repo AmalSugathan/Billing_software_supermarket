@@ -1,3 +1,5 @@
+import CorrectionsWorkspace from './CorrectionsWorkspace';
+import OfflinePrepare from './OfflinePrepare';
 import CommerceWorkspace from './CommerceWorkspace';
 import FinanceWorkspace from './FinanceWorkspace';
 import PurchaseWorkspace from './PurchaseWorkspace';
@@ -148,7 +150,11 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
       {canCash && <button className={tab === 'cash' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('cash')}>Cash & bank</button>}
       {canSale && <button className={tab === 'pos' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('pos')}>POS billing</button>}
       {canSupplierPayments && <button className={tab === 'payments' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('payments')}>Supplier payments</button>}
+      {canApprove && <button className="secondary-button" disabled={pending} onClick={() => setTab('corrections')}>Corrections & returns</button>}
+      {canSale && <button className="secondary-button" disabled={pending} onClick={() => setTab('offline')}>Offline preparation</button>}
     </div>
+    {tab === 'corrections' && <CorrectionsWorkspace {...{business, session, stores, onRecorded}} />}
+    {tab === 'offline' && <OfflinePrepare {...{business, session, stores}} />}
     {tab === 'pos' && <CommerceWorkspace {...{business, session, stores, onRecorded}} mode="pos" />}
     {tab === 'payments' && <CommerceWorkspace {...{business, session, stores, onRecorded}} mode="suppliers" />}
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="success-notice" role="status">{notice}</p>}

@@ -1,43 +1,29 @@
 # Development roadmap
 
-The user's six-phase sequence is authoritative. Phases are released after their acceptance gates; do not implement everything simultaneously.
+The user's six-phase sequence is authoritative. Release each phase only after its acceptance gates.
 
 | Phase | Scope | Gate |
 |---|---|---|
-| 1 Foundation | Identity/setup, products/barcodes, POS, inventory, purchases/suppliers, expenses and cashier cash | Decimal accuracy, permissions/tenant isolation, atomic posting/reversal, offline replay/crash and hardware validation |
-| 2 OCR | Invoice -> OCR -> product matching -> purchase -> inventory | Evidence/confidence, duplicate/mismatch rejection, human review and scanner/provider failure safety |
-| 3 Owner intelligence | Dashboard, cash flow, profit and daily AI briefing | Recorded-data reconciliation, clear accounting definitions, unavailable-data handling and grounded briefing |
-| 4 AI agents | Inventory, purchase, finance, pricing, expiry, supplier | Tool authorization, advisory recommendations, confidence and explicit significant-action approval |
-| 5 GST intelligence | Validation, reconciliation, preparation and integration | Accountant-reviewed fixtures and current rules; authorized real integration before filing claims |
-| 6 Predictive AI | Demand, reorder, pricing, expiry, suppliers, cash flow and anomalies | Backtesting, uncertainty, monitoring, data sufficiency and decision safety |
+| 1 Foundation | Identity/setup, products/barcodes, POS, inventory, purchases/suppliers, expenses and cashier cash | Decimal accuracy, tenant/store permissions, atomic posting/corrections, offline recovery and store pilot |
+| 2 OCR | Invoice -> OCR -> product matching -> purchase -> inventory | Evidence/confidence, duplicate/mismatch rejection, human review and provider failure safety |
+| 3 Owner intelligence | Dashboard, cash flow, profit and daily AI briefing | Recorded-data reconciliation, accounting definitions and grounded unavailable-data handling |
+| 4 AI agents | Inventory, purchase, finance, pricing, expiry, supplier | Tool authorization, advisory recommendations, confidence and significant-action approval |
+| 5 GST intelligence | Validation, reconciliation, preparation and integration | Accountant-reviewed fixtures and authorized integration before filing claims |
+| 6 Predictive AI | Demand, reorder, pricing, expiry, suppliers, cash flow and anomalies | Backtesting, uncertainty, monitoring and data sufficiency |
 
-## Current increment: Phase 1 catalog and opening inventory
-Identity/setup is complete as a development increment and its remote CI passed. The second increment adds categories/brands, supplier records, product fields/aliases, multiple barcodes, search, barcode lookup, fuzzy duplicate review, owner-confirmed opening counts, immutable batches/movements and assigned-store inventory views. Money and weighted quantities use decimal strings and PostgreSQL NUMERIC. No AI matching or OCR is claimed before Phase 2.
+## Phase 1 implementation
+1. Authentication, business/store/terminal setup, roles/store assignments and audit.
+2. Products, barcodes/SKU search, suppliers, duplicate review and opening stock ledger.
+3. Reviewed purchases with invoice-specific pack conversions/free quantities; expenses and reversals.
+4. Cash/bank accounts, opening/closing reconciliation, online cash/UPI/card/split billing and invoice-linked supplier payments.
+5. Owner-approved sales returns/cancellation, supplier-payment reversal, safe unused-purchase reversal and physical-count deltas.
+6. Prepared offline cash tills with encrypted IndexedDB journals, versioned service-worker shell, stock quotas, ordered replay-safe synchronization and recovery/finalization.
+7. Automated synthetic pilot, regression/tenant/concurrency tests, browser outage/lost-response tests, checkout timing and private backup/isolated restore drill.
 
-Opening retries serialize on a tenant/request key; identical replay returns the original movement and changed data is rejected. Duplicate product SKU/barcode/name creation rolls back atomically. Inventory reads and ledger postings enforce business/store permissions independently of the UI. Opening value is recorded opening quantity times cost, not profit or a completed inventory valuation policy. Reviewed purchase posting is now available; purchase/sale reversals, stock corrections and offline reliability remain outstanding; Phase 1 is not ready for a live store.
+See [pilot plan](phase1-pilot.md) and [validation evidence](pilot-validation.md). Passing software checks is not physical store sign-off. Before live use, validate opening counts/cash, target browser/device crash/power-loss/storage recovery, staff workflows, thermal printing, invoice formatting/tax policy, production HTTPS/secrets/backups and retention. Barcode scanner hardware remains deferred at the user's request. Customer credit, customer-specific GST/interstate receipts and partial used-goods supplier returns remain unsupported; use this pilot for local cash/UPI/card retail operations only.
 
-## Phase 1 increments
-1. Identity, business/store/terminal setup, membership/capabilities, tenant isolation and audit foundations.
-2. Catalog/barcodes/suppliers and immutable stock ledger.
-3. Purchases/expenses and atomic ledger postings.
-4. Decimal/tax policy, cashier sessions, POS/tender/returns and receipt hardware.
-5. Durable local POS, sync conflict reconciliation, pilot security/backup/performance acceptance.
+## Data and next phase
+The owner can use the isolated **DEMO Phase 1 walkthrough** business. Its operational CSVs are explicitly synthetic, with blank barcodes. Original files in Purchase_Bills_Demo remain private and unimported. Phase 2 will evaluate the requested PaddleOCR-VL-1.6 provider and add upload -> preprocessing -> extraction/matching -> confidence/evidence review -> reviewed purchase -> inventory. Explicit invoice carton quantities/pieces determine product-specific conversion; never assume one universal carton size or auto-create duplicate products.
 
-## Per-feature workflow
-Explain behavior and acceptance criteria -> migration -> domain/backend -> validated API -> frontend -> permission checks -> meaningful tests/edge cases -> documentation -> review. Every feature must demonstrate real end-to-end behavior. External adapters explicitly unavailable until configured.
-
-CI gates on PR and main: backend lint/format/types/tests, frontend lint/types/tests/build, PostgreSQL migration/integration tests, packaging build and dependency audit. The aggregate gate must fail if any job fails or is cancelled. Production deployment is not part of this initial pipeline.
-
-## Development data decision, 8 October 2026
-Use the seven private authentic purchase bills plus clearly labelled synthetic operational references in fixtures/demo. Do not block development on collecting actual opening counts, expense vouchers or cashier examples. Barcode collection and scanner hardware validation are deferred; preserve the existing barcode feature and use SKU/product search for now. Derive product-specific carton conversions from explicit reviewed invoice quantities/pieces rather than assuming a universal pack size. The reference files are not imported or executable business modules. Real-store acceptance still requires verified opening counts, cash/stock reconciliation and the remaining release gates.
-
-## Phase 1 reviewed-purchase increment
-Migration 0004_purchases adds append-only purchase headers/items and precise six-decimal stock costs. Purchase preview and explicit posting support invoice line discounts, tax-inclusive/exclusive rates, configured CGST/SGST or IGST split, reviewed pack conversions, free stock units, tracked batches/expiry and original descriptions. Duplicate supplier invoice/financial-year identities and conflicting request retries are rejected. Stock, invoice and audit commit together. Existing prices are not edited. Expense/cash posting, online POS and supplier payments have since been added; purchase/sale returns and reversals remain next; this is not a Phase 1 release or an OCR feature.
-
-## Phase 1 expense and cash increment
-Migration 0005_finance_cash adds paid expenses, immutable payment accounts/movements, linked expense reversals and cashier session/closing evidence. Terminal drawers have reviewed opening funds. Cash closing records expectation, actual count and explained variance; an owner can reconcile a difference before opening a drawer. Cashier permissions migrate into existing businesses. Financial postings/closing serialize by account and commit with audit; cashiers see only their own sessions and cannot alter bank balances. Online POS receipts and supplier payment allocation are now implemented in the next increment below. Customer refunds, payment reversals, bank integration, double-entry statements and offline durability remain outstanding.
-
-## Phase 1 online POS and supplier-payment increment
-Migration 0006_pos_payments adds normalized receipts/items/stock allocations/payment splits and invoice-linked supplier payments. Selling prices are GST-inclusive, discounts allocate exactly in paise, stock allocates by expiry/oldest lot with weighted-average batch cost snapshots, and checkout is one transaction with stock/money/audit. Cash uses the cashier's own terminal session; typed SKU search works without a scanner. Supplier payments support partial allocations, reference deduplication, explicit owner confirmation and synchronized outstanding balances. PostgreSQL guards independently reject overdrawn stock, overpaid invoices and incomplete sale ledgers. Browser recovery persists an uncertain online submission before sending it; this is not durable offline checkout.
-
-Phase 1 is still in progress. Remaining work includes sales returns/cancellations, supplier/purchase reversals, stock corrections, durable offline checkout/sync/conflicts, customer workflows and pilot performance/security/backup/receipt validation. Original bills can be reviewed manually in Phase 1 once stock cutoff/product/conversion/source-total decisions are verified. Automated original-bill ingestion belongs to Phase 2; no OCR model is installed or claimed working yet.
+## Development method
+Behavior/criteria -> migration -> backend -> validated API -> UI -> permissions/validation -> meaningful edge-case tests -> docs -> local gates -> push -> remote CI. No automatic deployment. Significant financial actions always require authorization and confirmation. Phase 3 profit reporting requires reconciliation of actual recorded costs; revenue is never labelled profit.

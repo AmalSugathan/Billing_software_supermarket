@@ -52,7 +52,7 @@ export default function App() {
         </div>
         <button onClick={refresh} disabled={checking}>{checking ? 'Checking…' : 'Check again'}</button>
       </section>
-      <p className="development-note">Setup, products, suppliers and opening stock are available. Billing, purchases and expenses are not available yet.</p>
+      <p className="development-note">Phase 1 includes products, purchases, inventory, expenses, cash sessions and billing. Owner-approved corrections and prepared offline tills are under pilot validation. Original supplier-bill OCR is planned for Phase 2.</p>
       <section aria-labelledby="roadmap-heading">
         <div className="section-title"><h2 id="roadmap-heading">The development path</h2><span>Six focused phases</span></div>
         <ol className="phase-grid">{phases.map(([title, description], index) => (

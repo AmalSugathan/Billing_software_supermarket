@@ -110,8 +110,10 @@ movements = sa.Table(
     sa.CheckConstraint(
         "(kind = 'opening' AND amount >= 0 AND cash_session_id IS NULL) OR "
         "(kind = 'opening_variance' AND amount <> 0 AND cash_session_id IS NULL) "
-        "OR (kind IN ('expense', 'withdrawal', 'supplier_payment') AND amount < 0) OR (kind "
-        "IN ('receipt', 'expense_reversal', 'sale') AND amount > 0) OR (kind = "
+        "OR (kind IN ('expense', 'withdrawal', 'supplier_payment', "
+        "'sales_refund') AND amount < 0) OR (kind "
+        "IN ('receipt', 'expense_reversal', 'sale', "
+        "'supplier_payment_reversal') AND amount > 0) OR (kind = "
         "'cash_variance' AND amount <> 0 AND cash_session_id IS NOT NULL)"
     ),
     *command_constraints(),

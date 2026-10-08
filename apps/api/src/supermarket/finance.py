@@ -26,6 +26,7 @@ from supermarket.identity import (
     scope_for,
 )
 from supermarket.identity_models import terminals
+from supermarket.offline_models import leases, seals
 
 
 class Approved(InputModel):
@@ -832,6 +833,13 @@ def finance_router(engine: Engine | None, settings: Settings) -> APIRouter:
                 raise HTTPException(403, "Only the cashier or owner can close this session")
             account = locked_account(connection, str(session["account_id"]), str(store_id))
             active_session(connection, str(session_id), str(session["account_id"]))
+            if connection.execute(
+                select(leases.c.id).where(
+                    leases.c.cash_session_id == str(session_id),
+                    ~select(seals.c.id).where(seals.c.target_id == leases.c.id).exists(),
+                )
+            ).first():
+                raise HTTPException(409, "Synchronize and finalize the offline till before closing")
             expected = balance(connection, str(session["account_id"]))
             if payload.expected_cash != expected:
                 raise HTTPException(

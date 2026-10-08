@@ -18,6 +18,7 @@ from supermarket.catalog_models import batches, products
 from supermarket.catalog_models import movements as stock_moves
 from supermarket.commerce_models import allocations, items, payments, sales, supplier_payments
 from supermarket.config import Settings
+from supermarket.correction_models import payment_reversals, purchase_reversals
 from supermarket.finance import Approved, active_session, append_money, locked_account
 from supermarket.identity import (
     Actor,
@@ -162,6 +163,7 @@ class Payable(BaseModel):
     total: Decimal
     paid: Decimal
     outstanding: Decimal
+    reversed: bool = False
 
 
 def calculate(payload: SaleInput, catalog: dict[str, dict[str, object]]) -> Quote:
@@ -327,12 +329,17 @@ def allocate_stock(
     for lot in lots:
         if lot["expiry_date"] is not None and lot["expiry_date"] < today:
             continue
-        take = min(remaining, Decimal(lot["quantity"]))
-        if take <= 0:
+        held = connection.execute(
+            text("SELECT quantity,value FROM offline_held(:batch)"), {"batch": lot["id"]}
+        ).one()
+        available = Decimal(lot["quantity"]) - Decimal(held[0])
+        free_value = Decimal(lot["value"]) - Decimal(held[1])
+        take = min(remaining, available)
+        if remaining <= 0:
             break
-        cost = (Decimal(lot["value"]) / Decimal(lot["quantity"])).quantize(
-            Decimal("0.000001"), rounding=ROUND_HALF_UP
-        )
+        if take <= 0:
+            continue
+        cost = (free_value / available).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
         if cost < 0:
             raise HTTPException(409, "Inventory cost requires review")
         movement_id = str(uuid4())
@@ -572,11 +579,23 @@ def commerce_router(engine: Engine | None, settings: Settings) -> APIRouter:
                     supplier_payments.c.purchase_id,
                     func.sum(supplier_payments.c.amount).label("paid"),
                 )
+                .where(
+                    ~select(payment_reversals.c.id)
+                    .where(payment_reversals.c.target_id == supplier_payments.c.id)
+                    .exists()
+                )
                 .group_by(supplier_payments.c.purchase_id)
                 .subquery()
             )
             rows = connection.execute(
-                select(purchases, func.coalesce(paid.c.paid, 0).label("paid"))
+                select(
+                    purchases,
+                    func.coalesce(paid.c.paid, 0).label("paid"),
+                    select(purchase_reversals.c.id)
+                    .where(purchase_reversals.c.target_id == purchases.c.id)
+                    .exists()
+                    .label("reversed"),
+                )
                 .outerjoin(paid, paid.c.purchase_id == purchases.c.id)
                 .where(purchases.c.store_id == str(store_id))
                 .order_by(purchases.c.created_at.desc(), purchases.c.id)
@@ -591,7 +610,10 @@ def commerce_router(engine: Engine | None, settings: Settings) -> APIRouter:
                     invoice_number=row["invoice_number"],
                     total=row["invoice_total"],
                     paid=row["paid"],
-                    outstanding=row["invoice_total"] - row["paid"],
+                    outstanding=Decimal(0)
+                    if row["reversed"]
+                    else row["invoice_total"] - row["paid"],
+                    reversed=row["reversed"],
                 )
                 for row in rows
             ]
@@ -656,10 +678,19 @@ def commerce_router(engine: Engine | None, settings: Settings) -> APIRouter:
                 )
                 if purchase is None:
                     raise HTTPException(404, "Purchase unavailable")
+                if connection.execute(
+                    select(purchase_reversals.c.id).where(
+                        purchase_reversals.c.target_id == str(payload.purchase_id)
+                    )
+                ).first():
+                    raise HTTPException(409, "Purchase is reversed")
                 paid = Decimal(
                     connection.execute(
                         select(func.coalesce(func.sum(supplier_payments.c.amount), 0)).where(
-                            supplier_payments.c.purchase_id == str(payload.purchase_id)
+                            supplier_payments.c.purchase_id == str(payload.purchase_id),
+                            ~select(payment_reversals.c.id)
+                            .where(payment_reversals.c.target_id == supplier_payments.c.id)
+                            .exists(),
                         )
                     ).scalar_one()
                 )
