@@ -1,6 +1,6 @@
 """Phase 1 identity, catalog and immutable inventory foundation."""
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Literal
 
@@ -17,6 +17,7 @@ from supermarket.corrections import corrections_router
 from supermarket.database import build_engine, database_ready
 from supermarket.finance import finance_router
 from supermarket.identity import identity_router
+from supermarket.ocr import ocr_router
 from supermarket.offline import offline_router
 from supermarket.purchases import purchases_router
 
@@ -44,11 +45,21 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         title="Supermarket platform",
         version="0.1.0",
         description=(
-            "Phase 1 online store operations. "
-            "Offline billing and release gates remain under development."
+            "Online and prepared offline store operations with private invoice intake. "
+            "OCR inference requires a separately configured private service."
         ),
         lifespan=lifespan,
     )
+
+    @application.middleware("http")
+    async def private_api_responses(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @application.exception_handler(SQLAlchemyError)
     async def database_error(_: Request, __: SQLAlchemyError) -> JSONResponse:
@@ -61,6 +72,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     application.include_router(commerce_router(database, configuration))
     application.include_router(corrections_router(database, configuration))
     application.include_router(offline_router(database, configuration))
+    application.include_router(ocr_router(database, configuration))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live(response: Response) -> HealthResponse:

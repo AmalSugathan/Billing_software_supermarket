@@ -9,6 +9,8 @@ class Settings:
     database_url: str | None = None
     cookie_secure: bool = True
     session_hours: int = 8
+    ocr_encryption_key: str | None = None
+    ocr_service_url: str | None = None
     allowed_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
         "http://localhost:5173",
@@ -35,6 +37,8 @@ class Settings:
             raise ValueError("Production requires secure cookies and explicit HTTPS origins")
         return cls(
             database_url=os.environ.get("DATABASE_URL") or None,
+            ocr_encryption_key=os.environ.get("OCR_ENCRYPTION_KEY") or None,
+            ocr_service_url=os.environ.get("OCR_SERVICE_URL") or None,
             cookie_secure=secure,
             allowed_origins=origins,
         )

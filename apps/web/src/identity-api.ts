@@ -28,7 +28,7 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, schema: z.ZodType<T>,
-  options: { method?: string; body?: unknown; csrf?: string; signal?: AbortSignal; idempotencyKey?: string } = {}): Promise<T> {
+  options: { method?: string; body?: unknown; csrf?: string; signal?: AbortSignal; idempotencyKey?: string; timeoutMs?: number } = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch('/api/v1' + path, {
@@ -36,7 +36,7 @@ export async function request<T>(path: string, schema: z.ZodType<T>,
       headers: { 'Content-Type': 'application/json', ...(options.csrf ? { 'X-CSRF-Token': options.csrf } : {}),
         ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}) },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(Math.min(240000, Math.max(1000, options.timeoutMs ?? 8000)))]) : AbortSignal.timeout(Math.min(240000, Math.max(1000, options.timeoutMs ?? 8000))),
     });
   } catch (error) {
     if (options.signal?.aborted) throw error;

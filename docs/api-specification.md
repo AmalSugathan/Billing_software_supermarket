@@ -124,3 +124,22 @@ All paths below share `/api/v1/businesses/{business_id}/stores/{store_id}`. Reso
 | POST | /offline-leases/{id}/finalize | Explicit last_sequence/reason/confirmed; release unused quotas only after journal count matches |
 
 Offline responses expose frozen catalog, remaining quota, expiry, sealed flag and synced_sequence; no cost data. Expiry prevents new local sales, not recovery of previously saved receipts. Same financial receipt replays with original ID; altered financial fields are rejected. Recovery approval is audited separately and does not alter its financial fingerprint. Unsealed leases block cash closing. Finalization is locked in the local journal before sending, retaining its command across reload/response loss. No API deletes a pending receipt.
+
+## Phase 2 development decision
+The user deferred physical stock, staff and hardware acceptance to the final build and authorized Phase 2. See [Phase 2 architecture and increment plan](phase2-ocr.md) for encrypted document intake, real PaddleOCR provider boundaries, confidence/evidence review and purchase-posting gates. Physical acceptance remains required before live use. OCR and document uploads never silently create products, change prices or update stock.
+
+### Private invoice intake API (increment 1)
+Root `/api/v1/businesses/{business_id}/stores/{store_id}/ocr-documents`:
+
+| Method | Suffix | Contract |
+|---|---|---|
+| GET | (root) | Metadata only; limit 1-200, offset 0-100000, newest first |
+| GET | /provider | Upload/encryption availability, declared model, configuration; no successful-health claim |
+| POST | (root) | Raw JPEG/PNG/PDF bytes, filename and data_origin query, CSRF/Origin and UUID Idempotency-Key; maximum 10 MiB/10 PDF pages |
+| GET | /{id} | Status plus decrypted latest OCR evidence only within authorized scope |
+| GET | /{id}/content | Authenticated safe image derivative; `original=true` downloads preserved original; PDF attachment only |
+| POST | /{id}/process | Review reason plus idempotency key; unavailable=503, concurrent attempt=409; returns review_required/failed; no financial posting |
+| GET | /{id}/matches | q and optional supplier_id; advisory existing-product candidates; match_score is not calibrated confidence |
+| POST | /{id}/mappings | Owner actions.approve, supplier/product/description/reason and confirmed=true; append-only approved alias, no stock mutation |
+
+All routes require purchases.manage except mapping approval, and verify store assignment before evidence access. API responses are no-store/nosniff. Duplicate original content within a store returns 409; original-key retry returns the stored document. Unknown OCR confidence is JSON null with review_required, not fabricated certainty. Failed/expired attempts remain immutable; explicit retry records interrupted-worker resolution in AI-source audit. Structured invoice field extraction/review and linked purchase posting remain pending.

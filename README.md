@@ -78,7 +78,7 @@ Dependencies are pinned by `uv.lock` and `apps/web/package-lock.json`. Update th
 
 Repository: https://github.com/AmalSugathan/Billing_software_supermarket. Local commit attribution uses `amalsugathan123@gmail.com`; GitHub authentication is separate from the commit email.
 
-Current Phase 1 work includes operational posting, controlled corrections and the automated offline pilot. See [pilot validation](docs/pilot-validation.md) for evidence and remaining store/production gates. Original bills are private and unimported; OCR starts in Phase 2. Synthetic references are in fixtures/demo and the isolated walkthrough is available in the UI.
+Current Phase 1 work includes operational posting, controlled corrections and the automated offline pilot. See [pilot validation](docs/pilot-validation.md) for evidence and remaining store/production gates. Original bills are privately uploaded into a separate Phase 2 review inbox; original stock and financial posting remain pending. Synthetic references are in fixtures/demo and the isolated walkthrough is available in the UI.
 
 ## Online billing and invoice payments
 Open **POS billing** in Store operations, choose a terminal, search/add products, review quantities/discounts, add cash/UPI/card payment splits and confirm checkout. Cash needs your own open drawer. Receipts can be reprinted with browser printing; thermal hardware has not been verified. **Supplier payments** lists reviewed invoices with paid/outstanding amounts and lets owners explicitly approve a payment against an invoice. These flows use real PostgreSQL stock/money ledgers, not UI mock results. See [POS and payments](docs/pos-payments.md).
@@ -91,3 +91,7 @@ Owners can open **Corrections & returns** to calculate/refund returned goods, ca
 For offline use, open the built app at http://127.0.0.1:8080 (or Docker Compose), prepare your open cash till through **Offline preparation**, then open `/offline-pos`. New offline sales use fixed prepared prices, cash and reserved quotas. Protect the device passphrase/export encrypted journals; synchronize/finalize before closing. Port 5173 is the development UI and does not provide a production offline shell. Physical hardware, true crash/power-loss acceptance and production security/backup configuration remain release gates.
 
 Run `npm.cmd --prefix apps/web run test:e2e` against the running built app/API; Windows can set `PILOT_BROWSER_CHANNEL=msedge`. Remote CI adds **Offline browser pilot** to its required gate. No live deployment occurs.
+
+## Phase 2 invoice intake
+
+The first OCR increment adds an encrypted private invoice inbox and the real PaddleOCR-VL-1.6 HTTP adapter. See [Phase 2 implementation and setup](docs/phase2-ocr.md). Original bills can be reviewed without importing stock or payments. Actual inference and structured invoice-to-purchase posting remain pending; an unavailable provider is shown explicitly.

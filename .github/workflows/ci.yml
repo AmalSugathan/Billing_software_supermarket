@@ -132,7 +132,10 @@ jobs:
         if: always()
         run: docker compose down
   browser-pilot:
-    name: Offline browser pilot
+    name: Offline POS and private invoice browser pilot
+    env:
+      # Disposable synthetic-only test key; never a deployment secret.
+      OCR_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

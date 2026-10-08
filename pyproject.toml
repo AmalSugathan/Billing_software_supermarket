@@ -10,6 +10,9 @@ dependencies = [
   "alembic>=1.15,<2",
   "psycopg[binary]>=3.2,<4",
   "email-validator>=2.2,<3",
+  "cryptography>=50.0.2",
+  "pillow>=12.3.0",
+  "pypdf>=6.19.0",
 ]
 
 [dependency-groups]

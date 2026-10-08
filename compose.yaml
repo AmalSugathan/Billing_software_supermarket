@@ -31,6 +31,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://supermarket_app:local_app_only@database:5432/supermarket_dev
       COOKIE_SECURE: 'false'
+      OCR_ENCRYPTION_KEY: ${OCR_ENCRYPTION_KEY:-}
+      OCR_SERVICE_URL: ${OCR_SERVICE_URL:-}
       APP_ENV: development
     ports: ["127.0.0.1:8000:8000"]
     depends_on:

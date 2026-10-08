@@ -1,3 +1,4 @@
+import base64
 import os
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -77,7 +78,9 @@ def postgres_case() -> Generator[PostgreSQLCase]:
                     f'"{schema}".purchase_reversal_item, "{schema}".stock_adjustment, '
                     f'"{schema}".offline_lease, "{schema}".offline_reservation, '
                     f'"{schema}".offline_sale, "{schema}".offline_consumption, '
-                    f'"{schema}".offline_seal FROM "{role}"'
+                    f'"{schema}".offline_seal, "{schema}".ocr_document, '
+                    f'"{schema}".ocr_attempt, "{schema}".ocr_result, '
+                    f'"{schema}".supplier_product_mapping FROM "{role}"'
                 )
             )
             connection.execute(
@@ -90,7 +93,11 @@ def postgres_case() -> Generator[PostgreSQLCase]:
             schema_admin,
             runtime,
             migration_url.render_as_string(hide_password=False),
-            Settings(cookie_secure=False, allowed_origins=("http://testserver",)),
+            Settings(
+                cookie_secure=False,
+                allowed_origins=("http://testserver",),
+                ocr_encryption_key=base64.b64encode(b"0" * 32).decode(),
+            ),
         )
     finally:
         runtime.dispose()
