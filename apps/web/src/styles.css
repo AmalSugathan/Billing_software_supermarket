@@ -78,3 +78,10 @@ summary { cursor: pointer; font-weight: 600; padding: .8rem 0; }
 .match-review { background: #fff8e6; border: 1px solid #ead7a4; border-radius: .7rem; padding: 1rem; }
 .opening-form { margin-top: 1.5rem; padding-top: .8rem; border-top: 1px solid #dfebe4; }
 @media (max-width: 600px) { .search-row { flex-direction: column; align-items: stretch; } }
+
+.pos-receipt { margin-top: 1rem; padding: 1rem; border: 1px solid #d7e0dd; background: white; color: #182a21; max-width: 30rem; overflow-wrap: anywhere; }
+@media print {
+  body:has(.pos-receipt) * { visibility: hidden; }
+  body:has(.pos-receipt) .pos-receipt, body:has(.pos-receipt) .pos-receipt * { visibility: visible; }
+  .pos-receipt { position: absolute; inset: 0 auto auto 0; width: 72mm; max-width: 100%; border: 0; padding: 0; font-size: 10pt; }
+}

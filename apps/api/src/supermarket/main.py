@@ -11,6 +11,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from supermarket.catalog import catalog_router
+from supermarket.commerce import commerce_router
 from supermarket.config import Settings
 from supermarket.database import build_engine, database_ready
 from supermarket.finance import finance_router
@@ -40,7 +41,10 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     application = FastAPI(
         title="Supermarket platform",
         version="0.1.0",
-        description="Phase 1 identity and business setup. Billing modules are under development.",
+        description=(
+            "Phase 1 online store operations. "
+            "Offline billing and release gates remain under development."
+        ),
         lifespan=lifespan,
     )
 
@@ -52,6 +56,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     application.include_router(catalog_router(database, configuration))
     application.include_router(purchases_router(database, configuration))
     application.include_router(finance_router(database, configuration))
+    application.include_router(commerce_router(database, configuration))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live(response: Response) -> HealthResponse:

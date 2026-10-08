@@ -68,7 +68,9 @@ def postgres_case() -> Generator[PostgreSQLCase]:
                     f'"{schema}".purchase_item, "{schema}".financial_account, '
                     f'"{schema}".cash_session, "{schema}".financial_movement, '
                     f'"{schema}".expense, "{schema}".expense_reversal, '
-                    f'"{schema}".cash_closing FROM "{role}"'
+                    f'"{schema}".cash_closing, "{schema}".sales_invoice, '
+                    f'"{schema}".sales_item, "{schema}".sales_stock_allocation, '
+                    f'"{schema}".sales_payment, "{schema}".supplier_payment FROM "{role}"'
                 )
             )
             connection.execute(

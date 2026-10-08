@@ -1,6 +1,6 @@
 # Supermarket operating system
 
-AI-native supermarket platform for Indian retail, developed in six phases. Phase 1 currently implements accounts, business/store/terminal setup, staff permissions, products/barcodes, suppliers and immutable opening stock against PostgreSQL. Reviewed purchase entry with pack conversions, tax snapshots and atomic incoming stock is now implemented. Paid expenses, money accounts and cashier reconciliation are now implemented. POS follows incrementally; the application is not ready for live billing.
+AI-native supermarket platform for Indian retail, developed in six phases. Phase 1 currently implements accounts, business/store/terminal setup, staff permissions, products/barcodes, suppliers and immutable opening stock against PostgreSQL. Reviewed purchase entry with pack conversions, tax snapshots and atomic incoming stock is now implemented. Paid expenses, money accounts and cashier reconciliation are now implemented. Online POS checkout, receipt reprinting and owner-confirmed invoice-linked supplier payments are implemented. Offline billing, returns/corrections and pilot release gates remain; the application is not ready for live billing.
 
 ## Prerequisites
 Python 3.14, Node.js 24, npm and PostgreSQL 17. Docker Desktop with Linux containers is optional for local development and required for container verification. This workspace has portable PostgreSQL and Git under ignored `.tools/`. Use development accounts until the pilot security gates pass. See [real business data](docs/real-data.md) for handling original stock invoices.
@@ -32,7 +32,7 @@ npm.cmd run dev
 ```
 Open http://127.0.0.1:5173. Create an account, then a business and its first store. Add your real products and barcodes; review similar names before creating a distinct product. Add suppliers, then record reviewed physical opening stock from Inventory. Owner confirmation creates an immutable movement with its cost, reason and batch/expiry evidence. Different batches can have separate opening counts; each lot has one opening entry. Retries use the same request key. No sales or AI metrics are fabricated.
 
-Business setup, terminals, staff grants and audit events are under the setup panel. Staff must register before receiving access. Cashiers can search/scan products but cannot see purchase costs or create products. Inventory managers see only assigned-store inventory; opening entries require owner approval. Price editing, corrections and purchase/expense posting are not available yet.
+Business setup, terminals, staff grants and audit events are under the setup panel. Staff must register before receiving access. Cashiers can search/scan products but cannot see purchase costs or create products. Inventory managers see only assigned-store inventory; opening entries require owner approval. Reviewed purchases, paid expenses, cash management, online POS and supplier payments are available in Store operations. Price editing and transaction/stock corrections remain deferred.
 
 ## PostgreSQL and migrations
 ```powershell
@@ -79,3 +79,8 @@ Dependencies are pinned by `uv.lock` and `apps/web/package-lock.json`. Update th
 Repository: https://github.com/AmalSugathan/Billing_software_supermarket. Local commit attribution uses `amalsugathan123@gmail.com`; GitHub authentication is separate from the commit email.
 
 Next Phase 1 increment: POS/tenders/returns and supplier payments, followed by durable offline synchronization. Paid expense/cash account/session behavior is documented in docs/expense-cash.md. Purchase arithmetic and supported invoice limitations are documented in docs/purchase-entry.md. Final valuation/COGS and tax-credit treatment remain prerequisites before POS/profit reporting. OCR starts in Phase 2. Synthetic operational reference CSVs are in fixtures/demo; no fixture or real bill has been automatically imported.
+
+## Online billing and invoice payments
+Open **POS billing** in Store operations, choose a terminal, search/add products, review quantities/discounts, add cash/UPI/card payment splits and confirm checkout. Cash needs your own open drawer. Receipts can be reprinted with browser printing; thermal hardware has not been verified. **Supplier payments** lists reviewed invoices with paid/outstanding amounts and lets owners explicitly approve a payment against an invoice. These flows use real PostgreSQL stock/money ledgers, not UI mock results. See [POS and payments](docs/pos-payments.md).
+
+A separate synthetic walkthrough can be created locally with `.venv/Scripts/python.exe scripts/seed_phase1_demo.py --email YOUR_EMAIL`. It asks for the portal password without saving it, refuses to add another identically named demo business, and never touches an existing shop's stock. Select **DEMO Phase 1 walkthrough** after refreshing the portal. This example has a INR 305 split-payment receipt, two paid expenses, a 51-piece carton purchase and a partial supplier payment. It intentionally does not seed refunds/closing because those reference CSVs describe a broader future acceptance scenario. Original bills are not imported by this script.

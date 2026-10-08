@@ -1,3 +1,4 @@
+import CommerceWorkspace from './CommerceWorkspace';
 import FinanceWorkspace from './FinanceWorkspace';
 import PurchaseWorkspace from './PurchaseWorkspace';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
@@ -18,6 +19,8 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
   business: Business; session: Session; stores: Store[]; onRecorded: () => Promise<void>;
 }) {
   const base = '/businesses/' + business.id;
+  const canSale = business.capabilities.includes('sales.create');
+  const canSupplierPayments = business.capabilities.includes('purchases.manage') || business.capabilities.includes('finance.read') || business.capabilities.includes('actions.approve');
   const canCatalog = business.capabilities.includes('catalog.manage');
   const canPurchase = business.capabilities.includes('purchases.manage');
   const canInventory = business.capabilities.includes('inventory.read');
@@ -143,7 +146,11 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
       {canPurchase && <button className={tab === 'suppliers' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('suppliers'); setError(''); }}>Suppliers</button>}
       {canExpense && <button className={tab === 'expenses' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('expenses')}>Expenses</button>}
       {canCash && <button className={tab === 'cash' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('cash')}>Cash & bank</button>}
+      {canSale && <button className={tab === 'pos' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('pos')}>POS billing</button>}
+      {canSupplierPayments && <button className={tab === 'payments' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('payments')}>Supplier payments</button>}
     </div>
+    {tab === 'pos' && <CommerceWorkspace {...{business, session, stores, onRecorded}} mode="pos" />}
+    {tab === 'payments' && <CommerceWorkspace {...{business, session, stores, onRecorded}} mode="suppliers" />}
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="success-notice" role="status">{notice}</p>}
     {tab === 'products' && <>
       <section className="workspace-card"><h4>Product catalog</h4><form className="search-row" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); setQuery(value(form, 'q')); setOffset(0); }}>

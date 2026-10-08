@@ -1,0 +1,16 @@
+# Phase 1: online POS and supplier payments
+
+This increment adds an online, atomic checkout and invoice-linked supplier payments. It is not the Phase 1 production release: durable offline replay, sales returns/cancellation, stock corrections, customer credit and the store pilot remain release gates.
+
+## Checkout
+Search existing products by name/SKU or optionally type/scan a configured barcode. Selling prices are GST-inclusive; line discounts are absolute rupee amounts. A bill discount is allocated in paise in proportion to each net line, with deterministic largest-remainder distribution. Prices, HSN, GST, quantities and tax components are snapshotted. Minimum selling price applies after all discounts. Cash, UPI and card splits must equal the exact bill total. Cash requires the cashier's own open drawer session and its terminal; UPI/card record cashier-confirmed receipt, not gateway settlement verification. Server price checks reject a changed catalog price.
+
+Inventory is allocated by earliest expiry first, then oldest batch. Expired batches cannot be sold. Per-batch moving weighted-average historical ledger cost is snapshotted on each stock allocation; sales subtract that cost from the ledger. Cost is hidden from cashiers. This is an estimated cost basis, not final profit or an assertion about input-tax eligibility. Product locks serialize checkout against purchases/opening stock. Account locks serialize checkout against cash closing. No sale, payment or stock movement survives a failed transaction.
+
+Each checkout has a client-generated idempotency key. The browser persists the submitted request before sending it and keeps it until the server result is received. An unresolved checkout blocks a new sale and can be retried after reload with its original key. This supports uncertain online responses; it does not yet constitute offline billing. Receipt IDs are unique; receipts can be fetched and reprinted through browser print. Dedicated thermal printer integration remains a pilot check.
+
+## Supplier payments
+Payments are allocated to one reviewed purchase invoice at a time, supporting partial payments. An owner explicitly confirms the amount, source account, reference and reason. Outstanding = invoice total minus recorded payments. Purchase and account locks reject overpayment, insufficient funds and concurrent duplicates. The payment, money movement and audit event commit together. This records a payment already made; it does not initiate a bank transfer. Payment corrections/reversals are a future release gate; posted records cannot be edited/deleted. Reference is unique per supplier within a business to prevent accidental repeat entry.
+
+## Original bills
+Original documents in Purchase_Bills_Demo remain private and unposted. Phase 1 permits reviewed manual entry. Before importing historical invoices, choose the stock cutoff and verify buyer identity, product matches, pack conversions and source totals. Historical invoices must not double-count current opening stock. Phase 2 adds upload, PaddleOCR worker, field confidence, matching and mandatory review before posting. Synthetic acceptance data is clearly labelled and is not silently seeded into the owner's business.

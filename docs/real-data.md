@@ -19,3 +19,8 @@ Private storage encryption, controlled access, malware-safe handling, retention 
 
 ## Current development dataset decision
 Use fixtures/demo for synthetic operational examples and keep authentic purchase bills separate. Product search/SKU supports development without a barcode scanner; existing barcode support is retained for later validation. Explicit invoice carton/piece details may supply product-specific pack conversions after review; ambiguous columns must not produce an automatic inventory update. Phase 1 uses manual reviewed purchase entry, while OCR extraction remains Phase 2. The CSVs currently define reference data only and do not enable unimplemented transaction modules.
+
+## Working UI dataset
+The local demo seeder creates a separate `DEMO Phase 1 walkthrough` business using the real operations APIs and clearly synthetic CSV products/opening/sales. Its example adds an explicitly synthetic carton purchase and partial payment. It leaves the demo drawer open for cashier practice; no refund or cash-closing reference is treated as implemented. This is a working synthetic ledger, not an original-invoice dataset.
+
+Original invoices remain private in Purchase_Bills_Demo. Manual reviewed entry is supported in Phase 1, but historical invoice ingestion must first resolve the stock cutoff, buyer aliases, product mapping, printed totals and per-product pack evidence to avoid doubling opening stock. Phase 2 first labels these documents and checks extraction/review, then offers upload -> OCR -> matching -> review -> purchase -> inventory. Low-confidence fields never post silently. No authentic bill is yet included in the demo or sent to an OCR provider.
