@@ -1,0 +1,2 @@
+scenario_id,opening_cash,other_cash_receipts,expected_cash,actual_cash,variance,explanation,data_origin
+DEMO-DAY-001,1000.00,0.00,1125.00,1115.00,-10.00,Synthetic shortage requiring review; cause not established,synthetic

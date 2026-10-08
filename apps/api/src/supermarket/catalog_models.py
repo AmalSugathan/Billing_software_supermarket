@@ -149,7 +149,7 @@ movements = sa.Table(
     uid("batch_id"),
     sa.Column("kind", sa.String(32), nullable=False),
     sa.Column("quantity", sa.Numeric(15, 3), nullable=False),
-    sa.Column("unit_cost", sa.Numeric(14, 2), nullable=False),
+    sa.Column("unit_cost", sa.Numeric(18, 6), nullable=False),
     sa.Column("reason", sa.String(500), nullable=False),
     sa.Column(
         "actor_user_id", sa.Uuid(as_uuid=False), sa.ForeignKey("user_account.id"), nullable=False
@@ -171,6 +171,10 @@ movements = sa.Table(
         ],
     ),
     sa.UniqueConstraint("business_id", "idempotency_key"),
+    sa.UniqueConstraint("business_id", "id", name="uq_stock_movement_business_id"),
+    sa.UniqueConstraint(
+        "business_id", "store_id", "product_id", "id", name="uq_stock_movement_scope"
+    ),
     sa.CheckConstraint("quantity <> 0 AND unit_cost >= 0"),
     sa.CheckConstraint(
         "kind <> 'opening' OR (quantity > 0 AND human_approved AND source = 'human')"

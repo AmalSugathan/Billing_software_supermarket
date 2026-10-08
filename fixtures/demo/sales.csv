@@ -1,0 +1,4 @@
+scenario_id,invoice_reference,date,sku,quantity,unit_price,discount,gst_rate,line_total,data_origin
+DEMO-DAY-001,DEMO-SALE-001,2026-10-08,DEMO-BISCUIT,3.000,25.00,0.00,0.00,75.00,synthetic
+DEMO-DAY-001,DEMO-SALE-001,2026-10-08,DEMO-RICE,2.500,60.00,0.00,0.00,150.00,synthetic
+DEMO-DAY-001,DEMO-SALE-001,2026-10-08,DEMO-SOAP,2.000,40.00,0.00,0.00,80.00,synthetic

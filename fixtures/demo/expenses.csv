@@ -1,0 +1,3 @@
+scenario_id,reference,date,category,description,amount,method,data_origin
+DEMO-DAY-001,DEMO-EXPENSE-001,2026-10-08,delivery,Synthetic delivery expense,50.00,cash,synthetic
+DEMO-DAY-001,DEMO-EXPENSE-002,2026-10-08,utilities,Synthetic utility expense,500.00,bank,synthetic

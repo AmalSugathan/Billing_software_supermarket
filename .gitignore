@@ -24,3 +24,6 @@ coverage/
 data/
 *.log
 requirements-audit.txt
+
+# Original supplier bills are private source evidence.
+Purchase_Bills_Demo/

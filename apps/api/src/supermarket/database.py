@@ -3,7 +3,7 @@
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-SCHEMA_REVISION = "0003_catalog_stock"
+SCHEMA_REVISION = "0004_purchases"
 
 
 def build_engine(database_url: str) -> Engine:

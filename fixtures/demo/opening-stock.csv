@@ -1,0 +1,4 @@
+scenario_id,sku,quantity,stock_unit,unit_cost,reason,data_origin
+DEMO-DAY-001,DEMO-BISCUIT,40.000,pcs,20.00,Synthetic opening count; not physical store stock,synthetic
+DEMO-DAY-001,DEMO-RICE,20.000,kg,45.00,Synthetic opening count; not physical store stock,synthetic
+DEMO-DAY-001,DEMO-SOAP,30.000,pcs,30.00,Synthetic opening count; not physical store stock,synthetic

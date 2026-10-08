@@ -1,0 +1,22 @@
+{
+  "dataset_id": "supermarket-phase1-demo-v1",
+  "data_origin": "synthetic",
+  "scenario_id": "DEMO-DAY-001",
+  "currency": "INR",
+  "date": "2026-10-08",
+  "purpose": "Development reference and future acceptance fixtures; not actual business records",
+  "posting_status": "not_imported",
+  "barcode_status": "omitted_by_user; hardware validation deferred",
+  "tax_policy": "Artificial zero-tax arithmetic scenario only; not a claim about legal GST rates",
+  "pack_examples_in_daily_stock": false,
+  "expected": {
+    "gross_sales": "305.00",
+    "refunds": "25.00",
+    "net_sales": "280.00",
+    "cash_sales": "200.00",
+    "upi_sales": "105.00",
+    "expenses": "550.00",
+    "expected_drawer": "1125.00",
+    "cash_variance": "-10.00"
+  }
+}

@@ -1,0 +1,4 @@
+scenario_id,sku,quantity,stock_unit,data_origin
+DEMO-DAY-001,DEMO-BISCUIT,38.000,pcs,synthetic
+DEMO-DAY-001,DEMO-RICE,17.500,kg,synthetic
+DEMO-DAY-001,DEMO-SOAP,28.000,pcs,synthetic

@@ -3,7 +3,7 @@
 ## Decision
 Use a modular monolith: Python/FastAPI, SQLAlchemy/Alembic, PostgreSQL, React/TypeScript/Vite. Python keeps later OCR/data/AI work in the same language as the backend; TypeScript supports the cashier and owner UI. One transaction commits financial documents, stock movements, audit events and outbox events. Background workers process outbox events independently of checkout.
 
-The current Phase 1 increment implements identity, business/store/terminal setup, scoped staff permissions and append-only audit records. Operational posting modules are not implemented yet. PostgreSQL is the authoritative database; SQLite is only a possible local POS store and is not a replacement for PostgreSQL isolation tests.
+The current Phase 1 increment implements identity, business/store/terminal setup, scoped staff permissions and append-only audit records. Catalog/opening inventory and reviewed purchase posting are implemented. Purchases commit invoice, item/tax/conversion snapshots, linked stock movements and audit together; no supplier payment or outbox worker is implemented in this increment. PostgreSQL is the authoritative database; SQLite is only a possible local POS store and is not a replacement for PostgreSQL isolation tests.
 
 Identity uses opaque, server-managed sessions with only token digests persisted, scrypt password hashing and explicit Origin/CSRF checks. Capability checks resolve authenticated membership before selecting a business. Transaction-local PostgreSQL context resets on commit/rollback, including pooled connections. A non-owner runtime database role is distinct from the migration administrator; the API rejects unsafe runtime roles. Store restrictions apply within an authorized business.
 

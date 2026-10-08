@@ -1,3 +1,4 @@
+import PurchaseWorkspace from './PurchaseWorkspace';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { request, type Business, type Session, type Store } from './identity-api';
 import { operations, type Candidate, type Movement, type Named, type Product, type Stock, type Supplier } from './operations-api';
@@ -135,6 +136,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
     <div className="operations-tabs" aria-label="Operation modules">
       <button className={tab === 'products' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('products'); setError(''); }}>Products & barcodes</button>
       {canInventory && <button className={tab === 'inventory' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('inventory'); setError(''); }}>Inventory</button>}
+      {canPurchase && <button className={tab === 'purchases' ? 'active' : 'secondary-button'} disabled={pending} onClick={() => setTab('purchases')}>Purchases</button>}
       {canPurchase && <button className={tab === 'suppliers' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('suppliers'); setError(''); }}>Suppliers</button>}
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="success-notice" role="status">{notice}</p>}
@@ -174,6 +176,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
       {!suppliers.length && <p>No suppliers recorded.</p>}<form className="form-grid" onSubmit={(event) => void recordSupplier(event)}>
         <label>Supplier name<input name="name" required maxLength={150} /></label><label>GSTIN (optional)<input name="gstin" minLength={15} maxLength={15} pattern="[0-9]{2}[A-Z0-9]{13}" /></label><label>Phone<input name="phone" maxLength={20} /></label><label>Payment terms (days)<input name="payment_terms_days" type="number" min={0} max={365} step={1} defaultValue={0} required /></label><label>Supplier address<textarea name="address" maxLength={500} /></label><button disabled={pending}>Save supplier</button>
       </form></section>}
+    {tab === 'purchases' && canPurchase && <PurchaseWorkspace business={business} session={session} stores={stores} suppliers={suppliers} onRecorded={onRecorded} />}
     {tab === 'inventory' && canInventory && <section className="workspace-card"><h4>Stock and opening counts</h4>
       <label>Inventory store<select value={storeId} disabled={pending} onChange={(event) => { setStoreId(event.target.value); setStockLoaded(false); setNotice(''); setError(''); }}>{stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       {!storeId ? <p>No stores assigned.</p> : !stockLoaded ? <p role="status">Loading recorded stock…</p> : <>

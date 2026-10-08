@@ -1,0 +1,3 @@
+scenario_id,invoice_reference,method,amount,data_origin
+DEMO-DAY-001,DEMO-SALE-001,cash,200.00,synthetic
+DEMO-DAY-001,DEMO-SALE-001,upi,105.00,synthetic

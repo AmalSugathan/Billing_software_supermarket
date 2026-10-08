@@ -3,7 +3,7 @@
 ## Implemented identity and setup contracts
 GET /api/v1/health/live: process status; independent of database.
 GET /api/v1/health/ready: verifies database connection and the known migration marker; 503 on unavailable/unmigrated database. It does not expose connection strings or raw exceptions.
-GET /openapi.json: actual generated contract. Financial posting and AI endpoints are not implemented yet.
+GET /openapi.json: actual generated contract. Reviewed purchase endpoints are implemented below. POS, expenses, supplier payments and AI endpoints remain under development.
 
 All routes below use `/api/v1`. UUID path values and strict request models are validated. Mutations require an allowed `Origin`; authenticated mutations additionally require `X-CSRF-Token` returned by session/login/registration. Requests use the HttpOnly session cookie. Session responses use `Cache-Control: no-store`.
 
@@ -68,3 +68,10 @@ Financial commands require Idempotency-Key; identical replay returns original re
 Errors: 400 invalid command, 401 unauthenticated, 403 denied, 404 unavailable scoped resource, 409 version/idempotency/duplicate conflict, 422 validation, 429 rate limit, 503 external service unavailable. Responses must not leak another tenant's record existence or provider secrets.
 
 Contract changes require API tests and frontend integration updates in the same increment. Generate frontend types from OpenAPI before adding operational endpoints.
+
+## Implemented reviewed purchase contracts
+All routes are under `/api/v1/businesses/{business_id}/stores/{store_id}/purchases`; require purchases.manage and assigned-store scope. Mutations require session/Origin/CSRF. POST /preview validates and calculates without writing stock, purchases or audit. POST to the base path requires confirmed=true and Idempotency-Key UUID; it commits purchase/items, linked stock and audit atomically. Identical retries return the original purchase (201); changed request/key combinations return 409. GET base lists up to 200 (default 50) with offset; GET /{purchase_id} returns a scoped posted record. Reads load item snapshots in batches.
+
+Input: supplier_id, invoice_number, invoice_date, tax_mode (exclusive/inclusive), tax_kind (intra/inter), signed round_off (-1.00 to 1.00), printed invoice_total, review_reason, confirmed and 1-200 lines. Lines: existing product_id, supplier_description, purchase_unit, purchase_quantity, units_per_purchase, free_stock_quantity, conversion_evidence, unit_rate (up to six decimal places), discount (line amount), gst_rate, optional hsn/batch_number/expiry_date. All numerical money/rate/quantity inputs are strings. Integer purchase units and piece/pack stock reject fractional counts; conversion results cannot exceed three decimals. Source evidence and explicit review are required, not an automatic inferred carton multiplier.
+
+Responses serialize decimal strings and show stock quantities, taxable amounts, split taxes, total and precise unit-cost basis. Posted responses also return retained source/conversion fields, supplier/product snapshots, line/batch/movement IDs and review/audit attribution. Price masters stay unchanged. Total mismatches reject posting; the supported calculation policy and limitations are in purchase-entry.md. No delete, payment or reversal endpoint exists in this increment.

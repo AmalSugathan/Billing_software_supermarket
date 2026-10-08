@@ -16,3 +16,6 @@
 .coverage
 coverage.xml
 data
+
+# Original supplier bills are private source evidence.
+Purchase_Bills_Demo/

@@ -42,3 +42,10 @@ schema_v0003.py is a frozen historical snapshot, separate from live catalog_mode
 
 ## Migration policy
 Versioned, reviewed migrations; never ORM create_all in application startup. CI tests an empty database upgrade and downgrade/re-upgrade on an isolated database. Add upgrade fixtures once historical application data exists. Production reversal is forward correction; destructive downgrades require an explicit recovery plan.
+
+## Reviewed purchases: 0004_purchases
+purchase and purchase_item are tenant-scoped with FORCE RLS and immutable UPDATE/DELETE triggers. Headers snapshot supplier identity, invoice number/date, normalized supplier invoice identity and April-to-March financial-year start, chosen tax mode/split, amounts, review reason, actor and human approval. The uniqueness key includes business/supplier/financial year/invoice identity across stores. Payment activity is not inferred from a bill or its QR code.
+
+Items preserve supplier descriptions, purchase units/quantities, product/SKU/stock-unit snapshots, conversion factors/evidence, free stock quantity, unit rates, discounts, HSN/GST values, tax components, precise tax-exclusive unit-cost basis and batch/movement links. Composite keys enforce business/store/product alignment. NUMERIC(18,6) stores source rates and movement unit costs; document money is NUMERIC(14,2), stock quantities NUMERIC(15,3). The migration preserves earlier two-decimal costs and rejects a downgrade that would round precise values. It is frozen in schema_v0004.py, separate from the live model.
+
+Purchase cost snapshots are tax-exclusive allocations over received stock, including free units. They are not a finished stock valuation or a statement that input GST is recoverable. Freight, nonrecoverable tax/landed cost allocations and POS cost-of-goods policy still require a later increment. No profit is calculated from these snapshots. Purchase documents and their movements/audit are one transaction; payment/journal/outbox models remain planned.

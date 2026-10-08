@@ -1,0 +1,4 @@
+sku,name,stock_unit,purchase_price,landed_cost,selling_price,mrp,gst_rate,barcode,data_origin
+DEMO-BISCUIT,DEMO Biscuit packet,pcs,20.00,20.00,25.00,25.00,0.00,,synthetic
+DEMO-RICE,DEMO Loose rice,kg,45.00,45.00,60.00,60.00,0.00,,synthetic
+DEMO-SOAP,DEMO Soap bar,pcs,30.00,30.00,40.00,40.00,0.00,,synthetic
