@@ -80,3 +80,24 @@ def test_fused_invoice_footer_is_not_stock_and_compound_tax_remains_advisory():
     assert draft.fields["invoice_date"].value == "2026-10-05"
     assert draft.fields["invoice_total"].value == "105.00"
     assert draft.line_total_sum == "105.00" and draft.posting_allowed is False
+
+
+def test_invoice_preface_and_combined_serial_description_do_not_hide_product_rows():
+    source = """<table>
+    <tr><td colspan="8">DEMO preface</td></tr><tr><td colspan="8">DEMO customer</td></tr>
+    <tr><td colspan="8">DEMO address</td></tr><tr><td colspan="8">DEMO date</td></tr>
+    <tr><td colspan="8">DEMO invoice</td></tr>
+    <tr><th>SL Item Description</th><th>HSN</th><th>MRP</th><th>Qty</th><th>U.Price</th>
+    <th>GST%</th><th>Net Value</th><th>Net Total</th></tr>
+    <tr><td>1 DEMO biscuit</td><td>19053100</td><td>25</td><td>2</td><td>10</td>
+    <td>5</td><td>20</td><td>21</td></tr>
+    <tr><th>GST%</th><th>Taxable Value</th><th>SGST Amt</th><th>CGST Amt</th>
+    <th colspan="4">Gross Total</th></tr><tr><td colspan="8">NOT STOCK</td></tr>
+    </table>"""
+    draft = propose("doc", "attempt", "hash", evidence(source))
+    assert len(draft.rows) == 1
+    assert draft.rows[0].fields["description"].value == "DEMO biscuit"
+    assert draft.rows[0].fields["description"].source == "1 DEMO biscuit"
+    assert draft.rows[0].fields["unit_rate"].value == "10"
+    assert draft.line_total_sum == "21.00"
+    assert draft.posting_allowed is False

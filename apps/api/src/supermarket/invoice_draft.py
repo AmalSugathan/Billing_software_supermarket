@@ -105,6 +105,8 @@ HEADERS = {
         "productname",
         "item",
         "itemname",
+        "itemdescription",
+        "slitemdescription",
         "particulars",
     },
     "hsn": {"hsn", "hsncode", "hsnsac"},
@@ -112,16 +114,16 @@ HEADERS = {
     "free_quantity": {"free", "freeqty", "fre"},
     "purchase_unit": {"unit", "uom"},
     "mrp": {"mrp", "mrp%"},
-    "unit_rate": {"rate", "price", "ptr", "purchaserate", "priceunit"},
+    "unit_rate": {"rate", "price", "ptr", "purchaserate", "priceunit", "uprice"},
     "discount_percent": {"dis%", "disc%", "discount%"},
-    "discount_amount": {"discount", "disamt", "discountamount", "discamt"},
+    "discount_amount": {"discount", "disamt", "discountamount", "discamt", "disc"},
     "gst_rate": {"gst%", "gstrate", "tax%"},
-    "taxable_value": {"netamt", "taxable", "taxablevalue", "taxableamount"},
+    "taxable_value": {"netamt", "taxable", "taxablevalue", "taxableamount", "netvalue"},
     "gst_amount": {"gstamt", "gstamount", "taxamount"},
     "cgst_amount": {"cgstamt", "cgstamount", "cgst"},
     "sgst_amount": {"sgstamt", "sgstamount", "sgst"},
     "igst_amount": {"igstamt", "igstamount", "igst"},
-    "line_total": {"totalamt", "totalamount", "amount", "total", "value"},
+    "line_total": {"totalamt", "totalamount", "amount", "total", "value", "nettotal"},
     "batch": {"batch", "batchno"},
     "expiry": {"expiry", "exp", "expdate"},
 }
@@ -186,7 +188,7 @@ def propose(document_id: str, attempt_id: str, sha256: str, evidence: OcrEvidenc
                 header_index = next(
                     (
                         index
-                        for index, cells in enumerate(table[:4])
+                        for index, cells in enumerate(table)
                         if any(header_key(cell) in HEADERS["description"] for cell in cells)
                     ),
                     None,
@@ -213,6 +215,11 @@ def propose(document_id: str, attempt_id: str, sha256: str, evidence: OcrEvidenc
                         "grandtotal",
                         "subtotal",
                         "taxdetails",
+                        "gst%",
+                        "taxsummary",
+                        "gstsummary",
+                        "grosstotal",
+                        "nettotal",
                         "cgst",
                         "sgst",
                         "igst",
@@ -232,6 +239,12 @@ def propose(document_id: str, attempt_id: str, sha256: str, evidence: OcrEvidenc
                         "descriptionofgoods",
                     }:
                         continue
+                    positions = indices["description"]
+                    if (
+                        len(positions) == 1
+                        and header_key(headers[positions[0]]) == "slitemdescription"
+                    ):
+                        mapped["description"].value = re.sub(r"^\d+\s+", "", description)
                     hsn = mapped["hsn"]
                     if hsn.value:
                         candidate = re.sub(r"\s+", "", hsn.value)
