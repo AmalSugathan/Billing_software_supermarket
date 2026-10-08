@@ -36,3 +36,6 @@ Release deployment is deferred. Future deployment uses immutable artifacts, migr
 - [FastAPI container guidance](https://fastapi.tiangolo.com/deployment/docker/)
 - [PostgreSQL row-level security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 - [GitHub PostgreSQL CI services](https://docs.github.com/en/enterprise-cloud@latest/actions/tutorials/using-containerized-services/creating-postgresql-service-containers)
+
+## Expense/cash implementation
+The finance module shares existing identity/store authorization and exposes confirmed document commands. Account balances are append-only movement sums, with a shared transaction advisory lock for posting, opening and closing. Financial records and audit commit together. Session headers and closing snapshots remain immutable; actual count differences produce separate variance movements. Expense reversals compensate original paid entries. The subsequent POS module will integrate tender/refund kinds through a new migration rather than faking receipts as sales. Supplier allocations, double-entry journals, bank providers and offline synchronization remain separate future boundaries.

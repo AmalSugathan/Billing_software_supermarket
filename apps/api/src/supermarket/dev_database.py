@@ -33,7 +33,8 @@ def main() -> None:
         connection.execute(
             text(
                 "REVOKE UPDATE, DELETE ON audit_log, security_event, stock_batch, "
-                "stock_movement, purchase, purchase_item FROM supermarket_app"
+                "stock_movement, purchase, purchase_item, financial_account, cash_session, "
+                "financial_movement, expense, expense_reversal, cash_closing FROM supermarket_app"
             )
         )
         connection.execute(

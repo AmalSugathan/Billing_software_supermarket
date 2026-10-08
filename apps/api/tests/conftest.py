@@ -65,7 +65,10 @@ def postgres_case() -> Generator[PostgreSQLCase]:
                     f'REVOKE UPDATE, DELETE ON "{schema}".audit_log, '
                     f'"{schema}".security_event, "{schema}".stock_batch, '
                     f'"{schema}".stock_movement, "{schema}".purchase, '
-                    f'"{schema}".purchase_item FROM "{role}"'
+                    f'"{schema}".purchase_item, "{schema}".financial_account, '
+                    f'"{schema}".cash_session, "{schema}".financial_movement, '
+                    f'"{schema}".expense, "{schema}".expense_reversal, '
+                    f'"{schema}".cash_closing FROM "{role}"'
                 )
             )
             connection.execute(

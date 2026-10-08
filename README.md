@@ -1,6 +1,6 @@
 # Supermarket operating system
 
-AI-native supermarket platform for Indian retail, developed in six phases. Phase 1 currently implements accounts, business/store/terminal setup, staff permissions, products/barcodes, suppliers and immutable opening stock against PostgreSQL. Reviewed purchase entry with pack conversions, tax snapshots and atomic incoming stock is now implemented. POS and expenses follow incrementally; the application is not ready for live billing.
+AI-native supermarket platform for Indian retail, developed in six phases. Phase 1 currently implements accounts, business/store/terminal setup, staff permissions, products/barcodes, suppliers and immutable opening stock against PostgreSQL. Reviewed purchase entry with pack conversions, tax snapshots and atomic incoming stock is now implemented. Paid expenses, money accounts and cashier reconciliation are now implemented. POS follows incrementally; the application is not ready for live billing.
 
 ## Prerequisites
 Python 3.14, Node.js 24, npm and PostgreSQL 17. Docker Desktop with Linux containers is optional for local development and required for container verification. This workspace has portable PostgreSQL and Git under ignored `.tools/`. Use development accounts until the pilot security gates pass. See [real business data](docs/real-data.md) for handling original stock invoices.
@@ -78,4 +78,4 @@ Dependencies are pinned by `uv.lock` and `apps/web/package-lock.json`. Update th
 
 Repository: https://github.com/AmalSugathan/Billing_software_supermarket. Local commit attribution uses `amalsugathan123@gmail.com`; GitHub authentication is separate from the commit email.
 
-Next Phase 1 increment: expense and cash posting, followed by POS/cashier operations and durable offline synchronization. Purchase arithmetic and supported invoice limitations are documented in docs/purchase-entry.md. Final valuation/COGS and tax-credit treatment remain prerequisites before POS/profit reporting. OCR starts in Phase 2. Synthetic operational reference CSVs are in fixtures/demo; no fixture or real bill has been automatically imported.
+Next Phase 1 increment: POS/tenders/returns and supplier payments, followed by durable offline synchronization. Paid expense/cash account/session behavior is documented in docs/expense-cash.md. Purchase arithmetic and supported invoice limitations are documented in docs/purchase-entry.md. Final valuation/COGS and tax-credit treatment remain prerequisites before POS/profit reporting. OCR starts in Phase 2. Synthetic operational reference CSVs are in fixtures/demo; no fixture or real bill has been automatically imported.

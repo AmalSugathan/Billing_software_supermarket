@@ -96,6 +96,7 @@ terminals = sa.Table(
     sa.UniqueConstraint("business_id", "id"),
     sa.UniqueConstraint("business_id", "store_id", "name"),
     sa.Index("ix_terminal_business_store", "business_id", "store_id"),
+    sa.UniqueConstraint("business_id", "store_id", "id", name="uq_terminal_store_scope"),
 )
 permissions = sa.Table("permission", metadata, sa.Column("code", sa.String(64), primary_key=True))
 roles = sa.Table(
@@ -176,6 +177,7 @@ ROLE_CAPABILITIES: dict[str, frozenset[str]] = {
             "purchases.manage",
             "expenses.manage",
             "sales.create",
+            "cash.sessions",
             "finance.read",
             "actions.approve",
         }
@@ -190,9 +192,10 @@ ROLE_CAPABILITIES: dict[str, frozenset[str]] = {
             "purchases.manage",
             "expenses.manage",
             "sales.create",
+            "cash.sessions",
         }
     ),
-    "CASHIER": frozenset({"business.read", "sales.create"}),
+    "CASHIER": frozenset({"business.read", "sales.create", "cash.sessions"}),
     "INVENTORY_MANAGER": frozenset({"business.read", "catalog.manage", "inventory.read"}),
     "PURCHASE_MANAGER": frozenset({"business.read", "purchases.manage", "inventory.read"}),
     "ACCOUNTANT": frozenset({"business.read", "expenses.manage", "finance.read", "audit.read"}),

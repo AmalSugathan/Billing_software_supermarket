@@ -1,0 +1,14 @@
+import { z } from 'zod';
+const decimal = z.string().regex(/^\d+(\.\d+)?$/);
+const signed = z.string().regex(/^-?\d+(\.\d+)?$/);
+const account = z.object({ id: z.string(), store_id: z.string(), terminal_id: z.string().nullable(), name: z.string(), kind: z.string(), opening_amount: decimal.nullable(), balance: decimal.nullable() });
+const expense = z.object({ id: z.string(), store_id: z.string(), account_id: z.string(), movement_id: z.string(), reference: z.string(), expense_date: z.string(), category: z.string(), description: z.string(), amount: decimal, actor_user_id: z.string(), created_at: z.string(), reversed: z.boolean() });
+const movement = z.object({ id: z.string(), account_id: z.string(), cash_session_id: z.string().nullable(), kind: z.string(), amount: signed, resource_id: z.string(), reason: z.string(), actor_user_id: z.string(), source: z.string(), human_approved: z.boolean(), created_at: z.string() });
+const cashSession = z.object({ id: z.string(), account_id: z.string(), store_id: z.string(), actor_user_id: z.string(), opening_cash: decimal, expected_cash: decimal, actual_cash: decimal.nullable(), variance: signed.nullable(), closed: z.boolean(), created_at: z.string() });
+const closing = z.object({ id: z.string(), cash_session_id: z.string(), expected_cash: decimal, actual_cash: decimal, variance: signed, movement_id: z.string().nullable(), reason: z.string(), actor_user_id: z.string(), created_at: z.string() });
+const reversal = z.object({ id: z.string(), expense_id: z.string(), account_id: z.string(), movement_id: z.string(), reason: z.string(), actor_user_id: z.string(), created_at: z.string() });
+export const finance = { account, accounts: z.array(account), expense, expenses: z.array(expense), movement, movements: z.array(movement), cashSession, sessions: z.array(cashSession), closing, reversal };
+export type Account = z.infer<typeof account>;
+export type Expense = z.infer<typeof expense>;
+export type CashSession = z.infer<typeof cashSession>;
+export type FinancialMovement = z.infer<typeof movement>;

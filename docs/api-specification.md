@@ -75,3 +75,18 @@ All routes are under `/api/v1/businesses/{business_id}/stores/{store_id}/purchas
 Input: supplier_id, invoice_number, invoice_date, tax_mode (exclusive/inclusive), tax_kind (intra/inter), signed round_off (-1.00 to 1.00), printed invoice_total, review_reason, confirmed and 1-200 lines. Lines: existing product_id, supplier_description, purchase_unit, purchase_quantity, units_per_purchase, free_stock_quantity, conversion_evidence, unit_rate (up to six decimal places), discount (line amount), gst_rate, optional hsn/batch_number/expiry_date. All numerical money/rate/quantity inputs are strings. Integer purchase units and piece/pack stock reject fractional counts; conversion results cannot exceed three decimals. Source evidence and explicit review are required, not an automatic inferred carton multiplier.
 
 Responses serialize decimal strings and show stock quantities, taxable amounts, split taxes, total and precise unit-cost basis. Posted responses also return retained source/conversion fields, supplier/product snapshots, line/batch/movement IDs and review/audit attribution. Price masters stay unchanged. Total mismatches reject posting; the supported calculation policy and limitations are in purchase-entry.md. No delete, payment or reversal endpoint exists in this increment.
+
+## Implemented expense and cash contracts
+Paths follow `/api/v1/businesses/{business_id}/stores/{store_id}`. All use authenticated tenant/store authorization; mutations require Origin/CSRF, confirmed=true and Idempotency-Key UUID. Replays check canonical payload/target/store hash and current authority. Cashier session/closing replays cannot reveal or take over another user's command. Conflicting keys or references return 409; validation/insufficient funds return 422. All document/movement/audit work commits together or rolls back.
+
+| Method | Path | Behavior |
+|---|---|---|
+| GET/POST | /accounts | First 200 account metadata/balances; create requires actions.approve; cash requires same-store terminal and opening funds/reason |
+| GET/POST | /expenses | expenses.manage; paid amount, date/category/description, account, unique store reference and cash_session_id for cash |
+| POST | /expenses/{id}/reverse | actions.approve; full linked reversal/reason; cash reversal requires a currently open session on the same account |
+| GET/POST | /money-movements | finance.read for listing; actions.approve for manual receipt/withdrawal; these are not POS sales/refunds |
+| GET/POST | /cash-sessions | Own sessions for cashiers, broader visibility for expense/finance roles; opening requires cash.sessions, terminal drawer and matching opening count |
+| POST | /cash-sessions/{id}/close | cash.sessions; own cashier or owner; expected_cash, actual_cash and reason; stale expectation returns 409 |
+| POST | /accounts/{id}/opening-variance | actions.approve; closed cash drawer only; reviewed expected/actual/reason; difference kept separate from receipts/expenses |
+
+Expense/movement/session lists use limit (1-200, default 50) and offset (0-100000). Cashier account responses hide noncash opening/balance values as null. Session records derive open expectation from recorded session movements; closed expectation/actual/variance remain snapshots. Noncash movements reject cash session IDs. Closed sessions cannot receive new movements. Money is decimal text with two places; expense/manual movement amounts must be positive. Internal movement signs determine recorded account direction. No payment provider validation or supplier settlement endpoint exists yet.

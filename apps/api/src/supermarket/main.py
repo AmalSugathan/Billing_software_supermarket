@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from supermarket.catalog import catalog_router
 from supermarket.config import Settings
 from supermarket.database import build_engine, database_ready
+from supermarket.finance import finance_router
 from supermarket.identity import identity_router
 from supermarket.purchases import purchases_router
 
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     application.include_router(identity_router(database, configuration))
     application.include_router(catalog_router(database, configuration))
     application.include_router(purchases_router(database, configuration))
+    application.include_router(finance_router(database, configuration))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live(response: Response) -> HealthResponse:
