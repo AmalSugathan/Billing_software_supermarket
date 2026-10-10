@@ -450,3 +450,15 @@ def test_mass_cost_for_piece_packets_but_never_for_liquid_volume():
     properties = generation_schema()["properties"]["items"]["items"]["properties"]
     assert properties["cost_per_kg"]["type"] == "null"
     assert properties["stock_quantity"]["type"] == "null"
+
+
+def test_validation_logs_never_include_untrusted_extra_keys_or_values(caplog, monkeypatch):
+    private_text = "SYNTHETIC private invoice text must not enter logs"
+    data = invoice(**{private_text: "SYNTHETIC secret value"})
+    provider = GeminiFlashProvider("synthetic-api-key")
+    monkeypatch.setattr(provider, "_request", lambda payload=None: response(data))
+    with pytest.raises(ProviderFailure):
+        provider.infer(b"synthetic", "image/jpeg")
+    assert "unknown_field" in caplog.text and "extra_forbidden" in caplog.text
+    assert private_text not in caplog.text
+    assert "secret value" not in caplog.text and "synthetic-api-key" not in caplog.text

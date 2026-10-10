@@ -12,7 +12,7 @@ from urllib.request import ProxyHandler, Request, build_opener
 from pydantic import ValidationError
 
 from supermarket.document_security import MAX_BYTES
-from supermarket.invoice_extraction import ExtractedInvoice
+from supermarket.invoice_extraction import ExtractedInvoice, ExtractedItem
 from supermarket.ocr_provider import (
     MAX_OUTPUT,
     EvidencePage,
@@ -200,8 +200,15 @@ class GeminiFlashProvider:
         except ProviderFailure:
             raise
         except ValidationError as error:
+            known_fields = set(ExtractedInvoice.model_fields) | set(ExtractedItem.model_fields)
             issues = [
-                {"field": item["loc"], "type": item["type"], "message": item["msg"]}
+                {
+                    "field": tuple(
+                        part if isinstance(part, int) or part in known_fields else "unknown_field"
+                        for part in item["loc"][:8]
+                    ),
+                    "type": item["type"],
+                }
                 for item in error.errors(
                     include_input=False, include_url=False, include_context=False
                 )[:10]
