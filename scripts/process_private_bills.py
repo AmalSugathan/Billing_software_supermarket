@@ -20,6 +20,14 @@ def main() -> None:
     parser.add_argument("--business", default="Phase 2 original-bill review")
     parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument("--origin", default="http://127.0.0.1:8080")
+    parser.add_argument(
+        "--use-current-provider",
+        action="store_true",
+        help="Re-extract completed bills when their model differs from the configured provider",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=0, help="Limit real bill attempts; 0 processes all"
+    )
     args = parser.parse_args()
     address = urlparse(args.url)
     if (
@@ -67,8 +75,9 @@ def main() -> None:
         base = "/businesses/" + business["id"]
         store = call(base + "/stores")[0]
         route = base + "/stores/" + store["id"] + "/ocr-documents"
-        if not call(route + "/provider")["health_verified"]:
-            raise RuntimeError("The genuine full PaddleOCR-VL-1.6 pipeline is not ready")
+        provider = call(route + "/provider")
+        if not provider["health_verified"]:
+            raise RuntimeError("The selected invoice extraction provider is not ready")
         documents = []
         offset = 0
         while True:
@@ -80,17 +89,22 @@ def main() -> None:
         print(
             f"Starting private OCR for {len(documents)} originals; posting is disabled.", flush=True
         )
+        if args.limit > 0:
+            documents = documents[: args.limit]
         completed = 0
         for index, document in enumerate(documents, 1):
             detail_route = route + "/" + document["id"]
             current = call(detail_route)
-            if current["status"] != "review_required":
+            previous_model = (current.get("evidence") or {}).get("provider_model")
+            if current["status"] != "review_required" or (
+                args.use_current_provider and previous_model != provider["provider_model"]
+            ):
                 if current["status"] != "processing":
                     current = call(
                         detail_route + "/process",
                         {
                             "reason": (
-                                "Owner requested genuine private OCR; "
+                                "Owner requested extraction with the configured provider; "
                                 "all financial values require review"
                             )
                         },
@@ -100,12 +114,21 @@ def main() -> None:
                 while current["status"] == "processing" and time.monotonic() < deadline:
                     time.sleep(5)
                     current = call(detail_route)
-            if current["status"] != "review_required":
+            previous_model = (current.get("evidence") or {}).get("provider_model")
+            if current["status"] != "review_required" or (
+                args.use_current_provider and previous_model != provider["provider_model"]
+            ):
                 print(
                     f"Original {index}/{len(documents)}: {current['status']}; "
                     "source retained; review required.",
                     flush=True,
                 )
+                if current.get("error_code") == "gemini_rate_limit":
+                    print(
+                        "Gemini quota reached; batch stopped. Existing drafts are retained.",
+                        flush=True,
+                    )
+                    break
                 continue
             draft = call(detail_route + "/draft")
             completed += 1
@@ -115,10 +138,12 @@ def main() -> None:
                 flush=True,
             )
         print(
-            f"Completed OCR: {completed}/{len(documents)}. "
+            f"Validated drafts checked: {completed}/{len(documents)}. "
             "Stock, payables and cash/bank were not changed.",
             flush=True,
         )
+        if completed != len(documents):
+            raise SystemExit(2)
     finally:
         call("/auth/logout", {})
 

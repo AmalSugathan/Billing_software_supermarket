@@ -28,6 +28,7 @@ from supermarket.document_security import (
     validate_document,
 )
 from supermarket.finance import row
+from supermarket.gemini_provider import GeminiFlashProvider
 from supermarket.identity import (
     Actor,
     IdentityAccess,
@@ -100,11 +101,12 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
     )
     access = IdentityAccess(engine, settings)
     vault = EvidenceVault(settings.ocr_encryption_key) if settings.ocr_encryption_key else None
-    provider = (
-        PaddleLayoutProvider(settings.ocr_service_url, settings.ocr_timeout_seconds)
-        if settings.ocr_service_url
-        else None
-    )
+    provider: GeminiFlashProvider | PaddleLayoutProvider | None = None
+    model = settings.gemini_model if settings.ocr_provider == "gemini" else MODEL
+    if settings.ocr_provider == "gemini" and settings.gemini_api_key:
+        provider = GeminiFlashProvider(settings.gemini_api_key, model, settings.ocr_timeout_seconds)
+    elif settings.ocr_provider == "paddle" and settings.ocr_service_url:
+        provider = PaddleLayoutProvider(settings.ocr_service_url, settings.ocr_timeout_seconds)
 
     def authorize(
         connection: Connection,
@@ -195,15 +197,26 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
         return {
             "upload_enabled": vault is not None,
             "provider_configured": provider is not None,
-            "provider_model": MODEL,
+            "provider_model": model,
             "health_verified": health_verified,
             "semantic_matching_available": False,
-            "message": "Private PaddleOCR-VL-1.6 full pipeline is ready"
-            if health_verified
-            else "Configured private service is not ready; retry after initialization"
-            if provider
-            else "PaddleOCR service is not configured. Documents can be saved privately, "
-            "but extraction is unavailable.",
+            "provider": settings.ocr_provider,
+            "external_processing": settings.ocr_provider == "gemini",
+            "message": (
+                "Gemini Flash is ready. Extraction sends this bill to Google."
+                if health_verified
+                else "Gemini Flash is configured; connectivity or model access needs checking."
+                if provider
+                else "Set GEMINI_API_KEY on the server to enable Gemini Flash extraction."
+            )
+            if settings.ocr_provider == "gemini"
+            else (
+                "Private PaddleOCR-VL-1.6 full pipeline is ready"
+                if health_verified
+                else "Configured private service is not ready; retry after initialization"
+                if provider
+                else "PaddleOCR service is not configured. Documents can be saved privately."
+            ),
         }
 
     @router.get("", response_model=list[DocumentView])
@@ -425,7 +438,7 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
             if vault is None or provider is None:
                 raise HTTPException(
                     503,
-                    "Configure private document encryption and the PaddleOCR service "
+                    "Configure private document encryption and the selected extraction provider "
                     "before extraction",
                 )
             lock(connection, "ocr-process:" + str(business_id) + str(document_id))
@@ -507,7 +520,7 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                     store_id=str(store_id),
                     actor_user_id=actor.user.id,
                     document_id=str(document_id),
-                    provider_model=MODEL,
+                    provider_model=model,
                     reason=payload.reason,
                     lease_expires_at=datetime.now(UTC)
                     + timedelta(seconds=max(240, settings.ocr_timeout_seconds + 60)),
@@ -521,7 +534,7 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                 actor.user.id,
                 "ocr.processing.requested",
                 attempt_id,
-                {"document_id": str(document_id), "provider_model": MODEL},
+                {"document_id": str(document_id), "provider_model": model},
             )
             accepted = presentation(connection, private_row(connection, document_id, store_id))
         background_tasks.add_task(
@@ -597,7 +610,7 @@ def ocr_router(engine: Engine | None, settings: Settings) -> APIRouter:
                         before_value=None,
                         after_value={
                             "document_id": str(document_id),
-                            "provider_model": MODEL,
+                            "provider_model": model,
                             "status": status,
                             "human_approved": False,
                             "stock_posted": False,

@@ -80,3 +80,8 @@ reviewed OCR attempt and purchase, with composite business/store foreign keys an
 forced tenant RLS. One original can link to only one posted purchase. The existing
 purchase, stock movements and source link commit together. No cash/bank movement is
 created. Reversals preserve the link and source evidence for forward correction.
+
+
+## Gemini extraction compatibility
+
+No new SQL migration: immutable ocr_attempt.provider_model records the actual model; encrypted ocr_result evidence adds a versioned extraction payload. Prior Paddle evidence remains readable. Human-approved purchase linkage and ledger tables stay at revision 0010. See [Gemini extraction](gemini-extraction.md).

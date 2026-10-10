@@ -32,3 +32,8 @@ Behavior/criteria -> migration -> backend -> validated API -> UI -> permissions/
 The user deferred physical stock, staff and hardware acceptance to the final build and authorized Phase 2. See [Phase 2 architecture and increment plan](phase2-ocr.md) for encrypted document intake, real PaddleOCR provider boundaries, confidence/evidence review and purchase-posting gates. Physical acceptance remains required before live use. OCR and document uploads never silently create products, change prices or update stock.
 
 Phase 2 increment 1 delivers encrypted document intake/source preview, append-only real-provider attempt/evidence records and reviewed supplier description matching. Increment 2 configures and executes the genuine private full PaddleOCR-VL-1.6 pipeline, adds asynchronous OCR and source-linked field/table proposals, and connects them to reviewed purchase posting. Original-bill processing has started. Actual stock/payable posting remains gated by owner verification of quantities, product matches, pack conversions and missing catalog prices. Physical stock, staff and hardware acceptance are explicitly deferred to final build at the user's request.
+
+
+## Phase 2 provider revision
+
+Active extraction changes to Gemini Flash with validated package quantities and a compact purchase review table. Existing originals can be reprocessed as new audited attempts. Stock/payables still require reviewed posting; synthetic contract checks alone do not establish model accuracy. See [Gemini extraction](gemini-extraction.md).

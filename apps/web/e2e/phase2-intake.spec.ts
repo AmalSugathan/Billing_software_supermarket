@@ -43,7 +43,7 @@ test('private invoice intake: lost response replay, source preview and no stock 
   const preview = page.getByAltText('Supplier invoice source for human review');
   await expect(preview).toBeVisible();
   await expect.poll(() => preview.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
-  const runOcr = page.getByRole('button', { name: 'Run private OCR', exact: true });
+  const runOcr = page.getByRole('button', { name: 'Extract invoice', exact: true });
   if (availability.provider_configured) await expect(runOcr).toBeEnabled();
   else await expect(runOcr).toBeDisabled();
   const documentsResponse = await context.request.get(path + '/ocr-documents');

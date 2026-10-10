@@ -162,7 +162,9 @@ def test_real_paddle_contract_adapter_and_failed_processing_keep_evidence(
     thread.start()
     try:
         settings = replace(
-            postgres_case.settings, ocr_service_url=f"http://127.0.0.1:{server.server_port}"
+            postgres_case.settings,
+            ocr_provider="paddle",
+            ocr_service_url=f"http://127.0.0.1:{server.server_port}",
         )
         with TestClient(create_app(settings, postgres_case.runtime)) as client:
             headers, base, path, terminal = setup(client)
@@ -275,7 +277,9 @@ def test_matching_pack_mismatch_and_reviewed_supplier_alias(postgres_case: Postg
 def test_crashed_ocr_worker_retains_attempt_and_requires_explicit_retry(
     postgres_case: PostgreSQLCase,
 ):
-    configuration = replace(postgres_case.settings, ocr_service_url="http://127.0.0.1:1")
+    configuration = replace(
+        postgres_case.settings, ocr_provider="paddle", ocr_service_url="http://127.0.0.1:1"
+    )
     with TestClient(create_app(configuration, postgres_case.runtime)) as client:
         headers, base, path, terminal = setup(client)
         actor = client.get("/api/v1/auth/session").json()["user"]["id"]

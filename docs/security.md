@@ -68,3 +68,8 @@ isolation or antivirus certification. Source-to-purchase approval uses the same
 per-document transaction lock as OCR attempts, immutable source hashes, tenant
 RLS and duplicate source/invoice constraints; failed financial validation rolls
 back purchase, stock and source linkage together.
+
+
+## Hosted Gemini processing selected by the owner
+
+Gemini sends validated supplier invoice bytes to Google over fixed HTTPS using a server-only key. Redirects and proxy inheritance are rejected. Keys and upstream response errors are never exposed to clients. Document text is untrusted data, with no tools or arbitrary network/DB access. Original and result persistence remains encrypted and tenant scoped. The hosted-provider choice supersedes the prior local-only Paddle configuration. See [Gemini extraction](gemini-extraction.md).

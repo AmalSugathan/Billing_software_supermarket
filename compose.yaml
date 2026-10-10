@@ -32,6 +32,9 @@ services:
       DATABASE_URL: postgresql+psycopg://supermarket_app:local_app_only@database:5432/supermarket_dev
       COOKIE_SECURE: 'false'
       OCR_ENCRYPTION_KEY: ${OCR_ENCRYPTION_KEY:-}
+      OCR_PROVIDER: ${OCR_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
       OCR_SERVICE_URL: ${OCR_SERVICE_URL:-}
       OCR_TIMEOUT_SECONDS: ${OCR_TIMEOUT_SECONDS:-180}
       APP_ENV: development

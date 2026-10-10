@@ -166,3 +166,8 @@ same original is rejected. Existing manual purchases remain supported. Original
 OCR values can be corrected during human review; the source evidence remains
 immutable and the reviewed payload is audited. This is an approved purchase and
 supplier payable, not evidence of payment or current physical opening stock.
+
+
+## Gemini structured extraction
+
+The existing /ocr-documents/provider response now identifies the selected model/provider and external_processing. /process still returns HTTP 202; Gemini receives bounded validated bytes. /draft returns optional per-row extraction matching the owner pack schema and proposal fields for purchase quantity/unit/conversion. No direct stock-write endpoint is added. See [Gemini extraction](gemini-extraction.md).

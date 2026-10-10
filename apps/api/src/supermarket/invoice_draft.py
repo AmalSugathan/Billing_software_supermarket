@@ -8,6 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from supermarket.invoice_extraction import ExtractedInvoice, ExtractedItem
 from supermarket.ocr_provider import OcrEvidence
 
 
@@ -25,6 +26,7 @@ class DraftRow(BaseModel):
     headers: list[str]
     cells: list[str]
     fields: dict[str, ProposedField]
+    extraction: ExtractedItem | None = None
 
 
 class InvoiceDraft(BaseModel):
@@ -160,6 +162,8 @@ def unique_field(matches: list[str]) -> ProposedField:
 
 
 def propose(document_id: str, attempt_id: str, sha256: str, evidence: OcrEvidence) -> InvoiceDraft:
+    if evidence.extraction is not None:
+        return structured_proposal(document_id, attempt_id, sha256, evidence.extraction)
     rows: list[DraftRow] = []
     texts: list[str] = []
     table_totals: list[str] = []
@@ -371,4 +375,84 @@ def propose(document_id: str, attempt_id: str, sha256: str, evidence: OcrEvidenc
         rows=rows[:200],
         warnings=list(dict.fromkeys(warnings)),
         line_total_sum=f"{line_sum:.2f}" if line_sum is not None else None,
+    )
+
+
+def structured_proposal(
+    document_id: str, attempt_id: str, sha256: str, invoice: ExtractedInvoice
+) -> InvoiceDraft:
+    def field(value: object, source: str = "Gemini invoice extraction") -> ProposedField:
+        return ProposedField(value=str(value) if value is not None else None, source=source)
+
+    fields = {
+        key: field(value)
+        for key, value in invoice.model_dump().items()
+        if key not in {"items", "warnings", "page_count", "schema_version"}
+    }
+    rows: list[DraftRow] = []
+    warnings = list(invoice.warnings)
+    for index, item in enumerate(invoice.items, 1):
+        factor = item.conversion_factor()
+        conversion = (
+            f"{item.invoice_quantity} {item.purchase_unit_interpretation} x {factor} "
+            f"{item.stock_unit} = {item.stock_quantity} {item.stock_unit}; verify against source"
+        )
+        values = {
+            "description": item.original_name,
+            "normalized_name": item.normalized_name,
+            "quantity": item.invoice_quantity,
+            "purchase_unit": item.purchase_unit_interpretation.lower()
+            if item.purchase_unit_interpretation
+            else None,
+            "stock_unit": item.stock_unit.lower() if item.stock_unit else None,
+            "stock_quantity": item.stock_quantity,
+            "units_per_purchase": factor,
+            "conversion_evidence": conversion if factor is not None else None,
+            "free_quantity": item.free_stock_quantity,
+            "unit_rate": item.unit_rate,
+            "discount_amount": item.discount_amount,
+            "gst_rate": item.gst_rate,
+            "hsn": item.hsn,
+            "line_total": item.line_total,
+            "batch": item.batch,
+            "expiry": item.expiry,
+        }
+        rows.append(
+            DraftRow(
+                page=item.source_page,
+                block=1,
+                row=index,
+                headers=[
+                    "Product",
+                    "Invoice quantity",
+                    "Purchase unit",
+                    "Pack size",
+                    "Stock quantity",
+                ],
+                cells=[
+                    item.original_name,
+                    str(item.invoice_quantity or ""),
+                    item.purchase_unit_interpretation or "",
+                    f"{item.detected_pack_size or ''} {item.pack_unit or ''}",
+                    f"{item.stock_quantity or ''} {item.stock_unit or ''}",
+                ],
+                fields={key: field(value, item.source_text) for key, value in values.items()},
+                extraction=item,
+            )
+        )
+        warnings.extend(f"Line {index}: {reason}" for reason in item.review_reasons)
+    total = (
+        sum((item.line_total for item in invoice.items if item.line_total is not None), Decimal(0))
+        if all(item.line_total is not None for item in invoice.items)
+        else None
+    )
+    return InvoiceDraft(
+        document_id=document_id,
+        attempt_id=attempt_id,
+        source_sha256=sha256,
+        supplier_candidates=[invoice.supplier_name] if invoice.supplier_name else [],
+        fields=fields,
+        rows=rows,
+        warnings=warnings,
+        line_total_sum=str(total) if total is not None else None,
     )

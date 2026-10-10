@@ -9,6 +9,8 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 
 from pydantic import BaseModel, Field, ValidationError
 
+from supermarket.invoice_extraction import ExtractedInvoice
+
 MODEL = "PaddleOCR-VL-1.6"
 MAX_OUTPUT = 8 * 1024 * 1024
 
@@ -40,6 +42,7 @@ class OcrEvidence(BaseModel):
     classification_confidence: None = None
     pages: list[EvidencePage] = Field(min_length=1, max_length=10)
     review_required: Literal[True] = True
+    extraction: ExtractedInvoice | None = None
 
 
 class ReadyHealth(BaseModel):

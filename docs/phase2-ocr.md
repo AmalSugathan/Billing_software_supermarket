@@ -1,3 +1,7 @@
+## Current provider: Gemini Flash
+
+The owner replaced the active CPU Paddle pipeline with Gemini Flash on 2026-10-09. Read [Gemini extraction](gemini-extraction.md) for the active setup, Pydantic schema and simplified review flow. The Paddle sections below are historical implementation details and an optional explicit legacy provider.
+
 # Phase 2 - reviewed invoice intelligence
 
 ## Scope and deferred acceptance

@@ -125,3 +125,28 @@ it('prefills OCR proposals but requires review of units, discounts and tax basis
   expect(JSON.parse(String(previewCall?.[1]?.body))).toMatchObject({ source_document_id: 'document-a', source_attempt_id: 'attempt-a', confirmed: false });
   expect(screen.getByRole('button', { name: 'Confirm and post purchase' })).toBeDisabled();
 });
+
+
+it('prefills Gemini purchase conversion and catches a catalog stock-unit mismatch', async () => {
+  const field = (value: string) => ({ value, source: 'SYNTHETIC Gemini fixture', confidence: null, requires_review: true as const });
+  const source = { storeId: stores[0].id, filename: 'SYNTHETIC-rice.jpg', draft: {
+    document_id: 'document-a', attempt_id: 'attempt-a', source_sha256: 'a'.repeat(64), supplier_candidates: [],
+    fields: { invoice_number: field('DEMO-002'), invoice_date: field('2026-10-09'), invoice_total: field('4550.00'), tax_mode: field('inclusive'), tax_kind: field('intra'), round_off: field('0') },
+    rows: [{ page: 1, block: 1, row: 1, headers: [], cells: [], fields: {
+      description: field('Rice 50kg'), quantity: field('2'), purchase_unit: field('bag'), stock_unit: field('kg'), units_per_purchase: field('50'), unit_rate: field('2275'), gst_rate: field('0'), discount_amount: field('0'), free_quantity: field('0'), conversion_evidence: field('2 bags of 50kg = 100kg'),
+    } }], warnings: [], line_total_sum: '4550', posting_allowed: false as const, review_required: true as const,
+  } };
+  const fetchMock = vi.fn(async (path: string, options?: RequestInit) => { void options; return path.includes('/products?') ? json([product]) : json([]); });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<PurchaseWorkspace business={business} session={session} stores={stores} suppliers={suppliers} source={source} onRecorded={vi.fn(async () => {})} />);
+  await screen.findByRole('option', { name: /DEMO biscuit/ });
+  expect(screen.getByLabelText('Purchase unit 1')).toHaveValue('bag');
+  expect(screen.getByLabelText('Stock units per purchase unit 1')).toHaveValue('50');
+  expect(screen.getByLabelText('Invoice prices')).toHaveValue('inclusive');
+  await userEvent.selectOptions(screen.getByLabelText('Purchase supplier'), suppliers[0].id);
+  await userEvent.selectOptions(screen.getByLabelText('Product for line 1'), product.id);
+  await userEvent.type(screen.getByLabelText('Review notes and rounding explanation'), 'Verified synthetic source');
+  await userEvent.click(screen.getByRole('button', { name: 'Review purchase totals' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Selected product stock unit differs');
+  expect(fetchMock.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true);
+});
