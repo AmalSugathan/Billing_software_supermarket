@@ -47,3 +47,7 @@ commerce.py owns validated quote, stock allocation, checkout and supplier-invoic
 
 ## Phase 2 development decision
 The user deferred physical stock, staff and hardware acceptance to the final build and authorized Phase 2. See [Phase 2 architecture and increment plan](phase2-ocr.md) for encrypted document intake, real PaddleOCR provider boundaries, confidence/evidence review and purchase-posting gates. Physical acceptance remains required before live use. OCR and document uploads never silently create products, change prices or update stock.
+
+## Owner intelligence read model
+
+`insights.py` aggregates existing immutable sale/credit, stock and financial ledgers in a repeatable-read, read-only PostgreSQL transaction. Authenticated capability and assigned-store checks precede two scoped aggregate queries; RLS stays active. This adds no persisted tables or migration. `OwnerDashboard` consumes a validated Decimal-string contract, rejects stale requests on scope changes, displays report failures without invented zeros, and renders exact values with BigInt formatting. The data-derived briefing is explicitly rules-based; scheduled/generated briefings remain a separate future boundary.

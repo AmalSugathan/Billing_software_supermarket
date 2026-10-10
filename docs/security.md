@@ -73,3 +73,7 @@ back purchase, stock and source linkage together.
 ## Hosted Gemini processing selected by the owner
 
 Gemini sends validated supplier invoice bytes to Google over fixed HTTPS using a server-only key. Redirects and proxy inheritance are rejected. Keys and upstream response errors are never exposed to clients. Document text is untrusted data, with no tools or arbitrary network/DB access. Original and result persistence remains encrypted and tenant scoped. The hosted-provider choice supersedes the prior local-only Paddle configuration. See [Gemini extraction](gemini-extraction.md).
+
+## Owner reports
+
+The owner-insights endpoint requires `finance.read` and assigned-store authorization, uses bound tenant/store/date parameters and retains RLS. Queries run read-only under a consistent repeatable-read snapshot. Periods are bounded to 366 days; date-invalid requests are rejected. Private response headers remain `no-store`. No model receives unrestricted queries or any business data in this increment. Dashboard requests abort on scope change; failed loads suppress old totals rather than showing stale or synthetic values.

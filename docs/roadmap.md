@@ -37,3 +37,7 @@ Phase 2 increment 1 delivers encrypted document intake/source preview, append-on
 ## Phase 2 provider revision
 
 Active extraction changes to Gemini Flash with validated package quantities and a compact purchase review table. Existing originals can be reprocessed as new audited attempts. Stock/payables still require reviewed posting; synthetic contract checks alone do not establish model accuracy. See [Gemini extraction](gemini-extraction.md).
+
+## Phase 3 authorized: first owner-intelligence increment
+
+The owner authorized carrying Phase 2 acceptance forward pending paid Gemini setup and starting Phase 3. Phase 2 is not production-signed-off: original-bill accuracy, reviewed purchase reconciliation, provider/recovery reliability and field-confidence limitations remain tracked. Begin with a recorded-data dashboard, reconciled revenue/cash-flow/cost estimates and an explicitly rules-based daily briefing. See [Phase 3 definitions and acceptance](phase3-owner-intelligence.md). Generative narration and scheduled delivery remain later increments.

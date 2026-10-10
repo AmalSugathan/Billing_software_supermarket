@@ -17,6 +17,7 @@ from supermarket.corrections import corrections_router
 from supermarket.database import build_engine, database_ready
 from supermarket.finance import finance_router
 from supermarket.identity import identity_router
+from supermarket.insights import insights_router
 from supermarket.ocr import ocr_router
 from supermarket.offline import offline_router
 from supermarket.purchases import purchases_router
@@ -73,6 +74,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     application.include_router(corrections_router(database, configuration))
     application.include_router(offline_router(database, configuration))
     application.include_router(ocr_router(database, configuration))
+    application.include_router(insights_router(database, configuration))
 
     @application.get("/api/v1/health/live", response_model=HealthResponse, tags=["health"])
     def live(response: Response) -> HealthResponse:

@@ -19,6 +19,7 @@ test('workspace: focused navigation, product entry and responsive checkout', asy
   expect(created.status()).toBe(201);
   await page.reload();
   const nav = page.getByRole('navigation', { name: 'Operation modules' });
+  await nav.getByRole('button', { name: 'Products & barcodes' }).click();
   await expect(nav.getByRole('button', { name: 'Products & barcodes' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText(/PHASE 1|The development path|Development foundation/)).toHaveCount(0);
   await expect(page.getByLabel('Product name', { exact: true })).not.toBeVisible();

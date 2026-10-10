@@ -171,3 +171,7 @@ supplier payable, not evidence of payment or current physical opening stock.
 ## Gemini structured extraction
 
 The existing /ocr-documents/provider response now identifies the selected model/provider and external_processing. /process still returns HTTP 202; Gemini receives bounded validated bytes. /draft returns optional per-row extraction matching the owner pack schema and proposal fields for purchase quantity/unit/conversion. No direct stock-write endpoint is added. See [Gemini extraction](gemini-extraction.md).
+
+## Owner overview
+
+`GET /api/v1/businesses/{business_id}/stores/{store_id}/insights?start=YYYY-MM-DD&end=YYYY-MM-DD` requires an authenticated `finance.read` membership and access to the requested store. Optional inclusive dates default to today in Asia/Kolkata (start defaults to end); maximum range 366 days, future end dates rejected. Returns Decimal-string `metrics`, end-date `snapshot`, daily revenue/cash-flow rows, prioritized rules-based `briefing`, posting basis and limitations. Counts are integers. Unauthorized roles receive 403; inaccessible businesses/stores receive 404. Financial data is not cached. See [accounting definitions](phase3-owner-intelligence.md). No mutation or external model call occurs.

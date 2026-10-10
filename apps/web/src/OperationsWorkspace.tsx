@@ -1,3 +1,4 @@
+import OwnerDashboard from './OwnerDashboard';
 import type { PurchaseSource } from './ocr-api';
 import InvoiceInbox from './InvoiceInbox';
 import CorrectionsWorkspace from './CorrectionsWorkspace';
@@ -31,7 +32,8 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
   const canApprove = business.capabilities.includes('actions.approve');
   const canExpense = business.capabilities.includes('expenses.manage');
   const canCash = business.capabilities.includes('cash.sessions') || business.capabilities.includes('finance.read') || canExpense;
-  const [tab, setTab] = useState('products');
+  const canInsights = business.capabilities.includes('finance.read');
+  const [tab, setTab] = useState(canInsights ? 'dashboard' : 'products');
   const [purchaseSource, setPurchaseSource] = useState<PurchaseSource | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -143,6 +145,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
   }
 
   const modules = [
+    { id: 'dashboard', label: 'Overview', group: 'YOUR BUSINESS', show: canInsights, hint: 'Know what came in, what went out and what needs your attention.' },
     { id: 'pos', label: 'POS billing', group: 'CHECKOUT', show: canSale, hint: 'Search products, build a bill and collect payment.' },
     { id: 'products', label: 'Products & barcodes', group: 'STOCK & PURCHASES', show: true, hint: 'Your products, prices and pack units in one place.' },
     { id: 'inventory', label: 'Inventory', group: 'STOCK & PURCHASES', show: canInventory, hint: 'Check recorded stock and trace every movement.' },
@@ -166,6 +169,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
     </nav>
     <div className="module-content">
       <header className="module-heading"><div><p className="eyebrow">{active?.group}</p><h3 id="operations-heading">{active?.label}</h3><p className="muted">{active?.hint}</p></div></header>
+      {tab === 'dashboard' && canInsights && <OwnerDashboard business={business} stores={stores} onNavigate={(module) => { if (modules.some((item) => item.id === module)) setTab(module); }} />}
       {tab === 'settings' && children}
     {tab === 'corrections' && <CorrectionsWorkspace {...{business, session, stores, onRecorded}} />}
     {tab === 'offline' && <OfflinePrepare {...{business, session, stores}} />}
