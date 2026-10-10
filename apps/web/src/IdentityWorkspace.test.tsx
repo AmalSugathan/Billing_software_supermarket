@@ -31,6 +31,7 @@ describe('identity and business setup', () => {
     await userEvent.type(await screen.findByLabelText('Business name'), 'Test supermarket');
     await userEvent.type(screen.getByLabelText('First store name'), 'Main store');
     await userEvent.click(screen.getByRole('button', { name: 'Create business and store' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Settings & access' }));
     expect(await screen.findByText('Isolated test fixture')).toBeInTheDocument();
     const call = fetchMock.mock.calls.find(([path, options]) => path.endsWith('/businesses') && options?.method === 'POST');
     expect(call?.[1]?.headers).toMatchObject({ 'X-CSRF-Token': 'test-csrf' });
@@ -49,6 +50,7 @@ describe('identity and business setup', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     render(<IdentityWorkspace />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Settings & access' }));
     await screen.findByText('Isolated test fixture');
     expect(screen.queryByRole('button', { name: 'Add store' })).not.toBeInTheDocument();
     expect(screen.queryByText('Staff access')).not.toBeInTheDocument();

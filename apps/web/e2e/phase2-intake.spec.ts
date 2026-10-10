@@ -20,6 +20,7 @@ test('private invoice intake: lost response replay, source preview and no stock 
   await page.getByRole('button', { name: 'Invoice inbox', exact: true }).click();
   const availabilityResponse = await context.request.get(path + '/ocr-documents/provider');
   const availability = await availabilityResponse.json() as { message: string; provider_configured: boolean };
+  await page.getByText('Extraction service details', { exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: availability.message })).toBeVisible();
   const image = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 200;

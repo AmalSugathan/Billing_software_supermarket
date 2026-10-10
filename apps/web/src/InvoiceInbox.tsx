@@ -65,6 +65,7 @@ export default function InvoiceInbox({ business, session, stores, suppliers, onP
       void request(route + '/' + selectedId, ocr.document, { signal: controller.signal }).then((result) => {
         if (!controller.signal.aborted) {
           setSelected(result);
+          setDocuments((items) => items.map((item) => item.id === result.id ? result : item));
           if (result.status === 'processing') timer = setTimeout(poll, 3000);
           else { localStorage.removeItem(recovery + ':process:' + selectedId); setNotice('OCR status: ' + result.status.replaceAll('_', ' ') + '. No purchase was posted.'); }
         }
@@ -121,11 +122,11 @@ export default function InvoiceInbox({ business, session, stores, suppliers, onP
       localStorage.removeItem(storageKey); setNotice('Supplier description mapping approved. Stock has not changed.');
     });
   }
-  return <section className="workspace-card">
+  return <section className="workspace-card invoice-workspace">
     <h4>Purchase invoice inbox</h4>
-    <p>Save the bill, inspect the source and review OCR evidence. OCR prepares proposals; purchases update stock and supplier payables only after you review and confirm them.</p>
+    <ol className="workflow-steps" aria-label="Invoice workflow"><li><span>1</span> Upload bill</li><li><span>2</span> Extract & check</li><li><span>3</span> Confirm purchase</li></ol><p className="muted">Check extracted quantities and pack sizes against the bill. Stock and supplier balances update only after purchase confirmation.</p>
     <label>Store<select value={storeId} disabled={busy} onChange={(event) => { setStoreId(event.target.value); setSelected(null); setDraft(null); setPreview(''); setCandidates([]); setProductId(''); setOffset(0); setError(''); }}>{stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}</select></label>
-    {provider && <p role="status">{provider.message} Model: {provider.provider_model}.</p>}
+    {provider && <details className="service-details"><summary>Extraction service details</summary><p role="status">{provider.message} Model: {provider.provider_model}.</p></details>}
     {provider && !provider.upload_enabled && <p>Private document encryption must be configured before uploads are available.</p>}
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <form onSubmit={(event) => { void upload(event); }}>
@@ -135,13 +136,13 @@ export default function InvoiceInbox({ business, session, stores, suppliers, onP
       <button disabled={busy || !provider?.upload_enabled}>Save invoice privately</button>
     </form>
     <button disabled={busy} onClick={() => { void action(async () => { const refreshed = await refresh(); setDocuments(refreshed.items); setProvider(refreshed.availability); }); }}>Refresh inbox</button>
-    <ul>{documents.map((document) => <li key={document.id}><button className="secondary-button" disabled={busy} onClick={() => { void action(async () => { if (selectedId !== document.id) setPreview(''); setCandidates([]); setDraft(null); setProductId(''); setSelected(await request(route + '/' + document.id, ocr.document)); }); }}>{document.filename} / {document.status.replaceAll('_', ' ')} / {document.data_origin}</button></li>)}</ul>
+    <ul className="invoice-list">{documents.map((document) => <li key={document.id}><button className="secondary-button" aria-pressed={selectedId === document.id} disabled={busy} onClick={() => { void action(async () => { if (selectedId !== document.id) setPreview(''); setCandidates([]); setDraft(null); setProductId(''); setSelected(await request(route + '/' + document.id, ocr.document)); }); }}>{document.filename} / {document.status.replaceAll('_', ' ')} / {document.data_origin}</button></li>)}</ul>
     <button disabled={busy || offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))}>Previous invoices</button>
     <button disabled={busy || documents.length < 50} onClick={() => setOffset(offset + 50)}>Next invoices</button>
     {selected && <>
       <h4>{selected.filename}</h4><p>Status: {selected.status.replaceAll('_', ' ')}. {selected.page_count} page(s). {selected.error_code && extractionIssue(selected.error_code)}</p>
       <a href={'/api/v1' + route + '/' + selected.id + '/content?original=true'} download>Download original bill</a>
-      {preview && <img src={preview} alt="Supplier invoice source for human review" className="invoice-source-preview" />}
+      {preview && <details className="source-details" open><summary>Original bill</summary><img src={preview} alt="Supplier invoice source for human review" className="invoice-source-preview" /></details>}
       <button disabled={busy || !provider?.provider_configured || selected.status === 'processing'} onClick={() => { void process(); }}>Extract invoice</button>
       <p className="hint">Check the product, purchase unit and incoming stock before confirming a purchase. OCR confidence is unavailable; validation checks consistency, not reading accuracy.</p>
       <details><summary>Raw extraction evidence</summary>{selected.evidence?.pages.filter((page) => page.markdown || page.blocks.length).map((page) => <section key={page.page_number}><h5>OCR page {page.page_number}: unreviewed evidence</h5><pre className="invoice-ocr-evidence">{page.markdown || page.blocks.map((block) => block.text).join('\n')}</pre></section>)}</details>

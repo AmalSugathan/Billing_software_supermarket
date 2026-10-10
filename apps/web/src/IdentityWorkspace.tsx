@@ -28,7 +28,7 @@ function AuthForm({ onSuccess }: { onSuccess: (session: Session) => void }) {
       {register && <label>Your name<input name="display_name" autoComplete="name" required maxLength={100} /></label>}
       <label>Email<input name="email" type="email" autoComplete="username" required maxLength={254} /></label>
       <label>Password<input name="password" type="password" autoComplete={register ? 'new-password' : 'current-password'} required minLength={12} maxLength={128} /></label>
-      <p className="hint">Use at least 12 characters.</p>
+      {register && <p className="hint">Use at least 12 characters.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <button disabled={pending}>{pending ? 'Please wait…' : register ? 'Create account' : 'Sign in'}</button>
     </form>
@@ -153,7 +153,7 @@ export default function IdentityWorkspace() {
   const current = loadedBusiness === businessId;
   const roleChoices = business?.role === 'OWNER' ? ['CASHIER', 'INVENTORY_MANAGER', 'PURCHASE_MANAGER', 'STORE_MANAGER', 'ACCOUNTANT', 'ADMIN', 'OWNER'] : ['ADMIN'];
   return <section className="workspace" aria-labelledby="workspace-heading">
-    <div className="workspace-header"><div><p className="eyebrow">YOUR WORKSPACE</p><h2 id="workspace-heading">Hello, {session.user.display_name}</h2></div>
+    <div className="workspace-header"><div><p className="eyebrow">STORE WORKSPACE</p><h2 id="workspace-heading">Hello, {session.user.display_name}</h2></div>
       <button className="secondary-button" disabled={pending} onClick={() => void action(async () => {
         await request('/auth/logout', schemas.empty, { method: 'POST', csrf: session.csrf_token });
         setSession(null); setBusinesses([]); setStores([]); setTerminals([]); setMembers([]); setAudit([]); setSelected(''); setLoadedBusiness('');
@@ -175,14 +175,14 @@ export default function IdentityWorkspace() {
       </select></label><span className="role-badge">{business.role.replaceAll('_', ' ')}</span>
       <button className="text-button" disabled={pending} onClick={() => setAddingBusiness(true)}>Add business</button></div>
       {!current ? <p role="status">Loading your store access…</p> : <>
-      <OperationsWorkspace key={businessId} business={business} session={session} stores={stores} onRecorded={async () => applyWorkspace(await loadWorkspace())} />
-      <details className="setup-details"><summary>Business setup, terminals and staff access</summary><div className="workspace-grid">
+      <OperationsWorkspace key={businessId} business={business} session={session} stores={stores} onRecorded={async () => applyWorkspace(await loadWorkspace())}>
+      <section className="settings-workspace" aria-label="Business settings"><div className="workspace-grid">
         <section className="workspace-card"><h3>Stores</h3>{stores.length ? <ul className="record-list">{stores.map((store) => <li key={store.id}><strong>{store.name}</strong><span>{store.address || 'No address recorded'}</span></li>)}</ul> : <p>No stores assigned to this account.</p>}
           {can('stores.manage') && business.all_stores && <form onSubmit={(event) => void createStore(event)}>
             <label>New store name<input name="name" required maxLength={150} /></label><label>Address<input name="address" maxLength={500} /></label>
             <button disabled={pending}>Add store</button></form>}
         </section>
-        <section className="workspace-card"><h3>Billing terminals</h3><p className="hint">Terminal setup is available. Checkout comes in a later Phase 1 increment.</p>
+        <section className="workspace-card"><h3>Billing terminals</h3><p className="hint">Set up a terminal for each checkout counter.</p>
           {terminals.length ? <ul className="record-list">{terminals.map((terminal) => <li key={terminal.id}><strong>{terminal.name}</strong><span>{stores.find((store) => store.id === terminal.store_id)?.name}</span></li>)}</ul> : <p>No terminals configured.</p>}
           {can('stores.manage') && stores.length > 0 && <form onSubmit={(event) => void createTerminal(event)}>
             <label>Store<select name="store_id">{stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}</select></label>
@@ -202,7 +202,7 @@ export default function IdentityWorkspace() {
           <ul className="record-list">{audit.map((entry) => <li key={entry.id}><strong>{entry.action.replaceAll('.', ' · ')}</strong><span>{new Date(entry.created_at).toLocaleString()} · {entry.source} · actor {entry.actor_user_id}</span></li>)}</ul>
           {!audit.length && <p>No events recorded.</p>}
         </section>}
-      </div></details></>}
+      </div></section></OperationsWorkspace></>}
     </>}
   </section>;
 }

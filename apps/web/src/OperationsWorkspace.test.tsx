@@ -30,6 +30,7 @@ describe('real operations API flows', () => {
     });
     vi.stubGlobal('fetch', fetchMock); mount();
     await screen.findByText(/No products match/);
+    await userEvent.click(screen.getByText('Add a product'));
     await userEvent.type(screen.getByLabelText('Product name'), 'Rice 1kg');
     await userEvent.type(screen.getByLabelText('SKU'), 'RICE');
     for (const [label, amount] of [['Purchase price (₹)', '18.50'], ['Landed cost (₹)', '19.00'], ['Selling price (₹)', '25.00'], ['MRP (₹)', '30.00']]) {
@@ -59,6 +60,7 @@ describe('real operations API flows', () => {
     vi.stubGlobal('fetch', fetchMock); mount();
     await screen.findByText(item.name); await userEvent.click(screen.getByRole('button', { name: 'Inventory' }));
     await screen.findByRole('table', { name: 'Recorded inventory' });
+    await userEvent.click(screen.getByText('Record opening stock'));
     await userEvent.selectOptions(screen.getByLabelText('Opening product'), item.id);
     await userEvent.type(screen.getByLabelText('Counted quantity'), '1.125');
     await userEvent.clear(screen.getByLabelText('Opening unit cost (₹)')); await userEvent.type(screen.getByLabelText('Opening unit cost (₹)'), '18.50');
@@ -96,6 +98,7 @@ describe('real operations API flows', () => {
       ? json({ detail: 'Supplier name or GSTIN already exists' }, 409) : json([]));
     vi.stubGlobal('fetch', fetchMock); mount(); await screen.findByText(/No products match/);
     await userEvent.click(screen.getByRole('button', { name: 'Suppliers' }));
+    await userEvent.click(screen.getByText('Add a supplier'));
     await userEvent.type(screen.getByLabelText('Supplier name'), 'Registered supplier');
     await userEvent.click(screen.getByRole('button', { name: 'Save supplier' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Supplier name or GSTIN already exists');

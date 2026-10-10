@@ -5,7 +5,7 @@ import OfflinePrepare from './OfflinePrepare';
 import CommerceWorkspace from './CommerceWorkspace';
 import FinanceWorkspace from './FinanceWorkspace';
 import PurchaseWorkspace from './PurchaseWorkspace';
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { request, type Business, type Session, type Store } from './identity-api';
 import { operations, type Candidate, type Movement, type Named, type Product, type Stock, type Supplier } from './operations-api';
 
@@ -19,8 +19,8 @@ function MoneyField({ label, name, initial = '0', required = true }: { label: st
   return <label>{label}<input name={name} inputMode="decimal" pattern={amountPattern} defaultValue={initial} required={required} /></label>;
 }
 
-export default function OperationsWorkspace({ business, session, stores, onRecorded }: {
-  business: Business; session: Session; stores: Store[]; onRecorded: () => Promise<void>;
+export default function OperationsWorkspace({ business, session, stores, onRecorded, children }: {
+  business: Business; session: Session; stores: Store[]; onRecorded: () => Promise<void>; children?: ReactNode;
 }) {
   const base = '/businesses/' + business.id;
   const canSale = business.capabilities.includes('sales.create');
@@ -142,21 +142,31 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
     if (await action(async () => { await request(base + path, operations.named, { method: 'POST', csrf: session.csrf_token, body: { name: value(form, 'name') } }); applyCatalog(await loadCatalog()); await onRecorded(); })) element.reset();
   }
 
+  const modules = [
+    { id: 'pos', label: 'POS billing', group: 'CHECKOUT', show: canSale, hint: 'Search products, build a bill and collect payment.' },
+    { id: 'products', label: 'Products & barcodes', group: 'STOCK & PURCHASES', show: true, hint: 'Your products, prices and pack units in one place.' },
+    { id: 'inventory', label: 'Inventory', group: 'STOCK & PURCHASES', show: canInventory, hint: 'Check recorded stock and trace every movement.' },
+    { id: 'invoices', label: 'Invoice inbox', group: 'STOCK & PURCHASES', show: canPurchase, hint: 'Turn supplier bills into reviewed purchases.' },
+    { id: 'purchases', label: 'Purchases', group: 'STOCK & PURCHASES', show: canPurchase, hint: 'Review incoming goods, costs and supplier balances.' },
+    { id: 'suppliers', label: 'Suppliers', group: 'STOCK & PURCHASES', show: canPurchase, hint: 'Manage supplier details and payment terms.' },
+    { id: 'expenses', label: 'Expenses', group: 'MONEY', show: canExpense, hint: 'Record business spending with a clear audit trail.' },
+    { id: 'cash', label: 'Cash & bank', group: 'MONEY', show: canCash, hint: 'Track money movement and reconcile the cash drawer.' },
+    { id: 'payments', label: 'Supplier payments', group: 'MONEY', show: canSupplierPayments, hint: 'Review outstanding purchases and record payments.' },
+    { id: 'corrections', label: 'Corrections & returns', group: 'MANAGEMENT', show: canApprove, hint: 'Review returns and corrections before recording them.' },
+    { id: 'offline', label: 'Offline preparation', group: 'MANAGEMENT', show: canSale, hint: 'Prepare this till to keep billing during a connection loss.' },
+    { id: 'settings', label: 'Settings & access', group: 'MANAGEMENT', show: !!children, hint: 'Manage stores, checkout terminals, staff and audit history.' },
+  ].filter((item) => item.show);
+  const active = modules.find((item) => item.id === tab);
   return <section className="operations" aria-labelledby="operations-heading">
-    <h3 id="operations-heading">Store operations</h3>
-    <div className="operations-tabs" aria-label="Operation modules">
-      <button className={tab === 'products' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('products'); setError(''); }}>Products & barcodes</button>
-      {canInventory && <button className={tab === 'inventory' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('inventory'); setError(''); }}>Inventory</button>}
-      {canPurchase && <button className={tab === 'invoices' ? 'active' : 'secondary-button'} disabled={pending} onClick={() => setTab('invoices')}>Invoice inbox</button>}
-      {canPurchase && <button className={tab === 'purchases' ? 'active' : 'secondary-button'} disabled={pending} onClick={() => setTab('purchases')}>Purchases</button>}
-      {canPurchase && <button className={tab === 'suppliers' ? '' : 'secondary-button'} disabled={pending} onClick={() => { setTab('suppliers'); setError(''); }}>Suppliers</button>}
-      {canExpense && <button className={tab === 'expenses' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('expenses')}>Expenses</button>}
-      {canCash && <button className={tab === 'cash' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('cash')}>Cash & bank</button>}
-      {canSale && <button className={tab === 'pos' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('pos')}>POS billing</button>}
-      {canSupplierPayments && <button className={tab === 'payments' ? '' : 'secondary-button'} disabled={pending} onClick={() => setTab('payments')}>Supplier payments</button>}
-      {canApprove && <button className="secondary-button" disabled={pending} onClick={() => setTab('corrections')}>Corrections & returns</button>}
-      {canSale && <button className="secondary-button" disabled={pending} onClick={() => setTab('offline')}>Offline preparation</button>}
-    </div>
+    <nav className="operations-tabs" aria-label="Operation modules">
+      {modules.map((item, index) => <div key={item.id}>
+        {modules[index - 1]?.group !== item.group && <p className="nav-group">{item.group}</p>}
+        <button aria-current={tab === item.id ? 'page' : undefined} disabled={pending} onClick={() => { setTab(item.id); setError(''); setNotice(''); }}><span className="nav-marker" aria-hidden="true" />{item.label}</button>
+      </div>)}
+    </nav>
+    <div className="module-content">
+      <header className="module-heading"><div><p className="eyebrow">{active?.group}</p><h3 id="operations-heading">{active?.label}</h3><p className="muted">{active?.hint}</p></div></header>
+      {tab === 'settings' && children}
     {tab === 'corrections' && <CorrectionsWorkspace {...{business, session, stores, onRecorded}} />}
     {tab === 'offline' && <OfflinePrepare {...{business, session, stores}} />}
     {tab === 'pos' && <CommerceWorkspace {...{business, session, stores, onRecorded}} mode="pos" />}
@@ -171,7 +181,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
           <tbody>{products.map((item) => <tr key={item.id}><td>{item.name}{!item.active && ' (inactive)'}</td><td>{item.sku}<small>{item.barcodes.join(', ') || 'No barcode'}</small></td><td>{item.unit}</td><td>{money(item.selling_price)}</td><td>{money(item.mrp)}</td><td>{money(item.purchase_price)}</td></tr>)}</tbody></table></div> : <p>No products match this view. Add your actual products to get started.</p>}
         <div className="pagination"><button className="secondary-button" disabled={pending || offset === 0} onClick={() => setOffset(offset - 50)}>Previous products</button><button className="secondary-button" disabled={pending || products.length < 50} onClick={() => setOffset(offset + 50)}>Next products</button></div>
       </section>
-      {canCatalog && <section className="workspace-card"><h4>Add a product</h4><p className="hint">Use the supplier bill and packaging. Money is entered per selected unit. This records a product without adding stock.</p>
+      {canCatalog && <details className="workspace-card creation-panel"><summary>Add a product</summary><p className="hint">Use the supplier bill and packaging. Money is entered per selected unit. This records a product without adding stock.</p>
         <form ref={productForm} className="form-grid" onSubmit={(event) => void recordProduct(event)}>
           <label>Product name<input name="name" required maxLength={180} onChange={() => setMatches([])} /></label><label>SKU<input name="sku" required maxLength={64} pattern="[A-Za-z0-9._/\-]+" /></label>
           <label>Unit<select name="unit">{['pcs', 'pack', 'kg', 'g', 'l', 'ml'].map((unit) => <option key={unit}>{unit}</option>)}</select></label><label>Barcodes (comma separated)<input name="barcodes" maxLength={1300} /></label>
@@ -191,13 +201,13 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
           <button disabled={pending}>{pending ? 'Saving…' : 'Save product'}</button>
         </form>
         <details><summary>Add category or brand</summary><form className="search-row" onSubmit={(event) => void addName(event, '/categories')}><label>New category<input name="name" required maxLength={150} /></label><button disabled={pending}>Add category</button></form><form className="search-row" onSubmit={(event) => void addName(event, '/brands')}><label>New brand<input name="name" required maxLength={150} /></label><button disabled={pending}>Add brand</button></form></details>
-      </section>}
+      </details>}
     </>}
-    {tab === 'suppliers' && canPurchase && <section className="workspace-card"><h4>Suppliers</h4><p className="hint">Up to 200 suppliers shown. Outstanding payments become available with purchase posting.</p>
+    {tab === 'suppliers' && canPurchase && <section className="workspace-card"><h4>Suppliers</h4><p className="hint">Up to 200 suppliers shown. Review outstanding balances in Supplier payments.</p>
       <ul className="record-list">{suppliers.map((item) => <li key={item.id}><strong>{item.name}</strong><span>{item.gstin || 'GSTIN not recorded'} · {item.phone || 'Phone not recorded'} · {item.payment_terms_days} day terms</span></li>)}</ul>
-      {!suppliers.length && <p>No suppliers recorded.</p>}<form className="form-grid" onSubmit={(event) => void recordSupplier(event)}>
+      {!suppliers.length && <p>No suppliers recorded.</p>}<details className="supplier-entry"><summary>Add a supplier</summary><form className="form-grid" onSubmit={(event) => void recordSupplier(event)}>
         <label>Supplier name<input name="name" required maxLength={150} /></label><label>GSTIN (optional)<input name="gstin" minLength={15} maxLength={15} pattern="[0-9]{2}[A-Z0-9]{13}" /></label><label>Phone<input name="phone" maxLength={20} /></label><label>Payment terms (days)<input name="payment_terms_days" type="number" min={0} max={365} step={1} defaultValue={0} required /></label><label>Supplier address<textarea name="address" maxLength={500} /></label><button disabled={pending}>Save supplier</button>
-      </form></section>}
+      </form></details></section>}
     {((tab === 'expenses' && canExpense) || (tab === 'cash' && canCash)) && <FinanceWorkspace key={tab} business={business} session={session} stores={stores} mode={tab === 'expenses' ? 'expenses' : 'cash'} onRecorded={onRecorded} />}
     {tab === 'invoices' && canPurchase && <InvoiceInbox key={business.id} business={business} session={session} stores={stores} suppliers={suppliers} onPurchase={(source) => { setPurchaseSource(source); setTab('purchases'); }} />}
     {tab === 'purchases' && canPurchase && <PurchaseWorkspace key={purchaseSource?.draft.attempt_id ?? 'manual'} business={business} session={session} stores={stores} suppliers={suppliers} source={purchaseSource} onClearSource={() => setPurchaseSource(null)} onRecorded={async () => { setPurchaseSource(null); await onRecorded(); }} />}
@@ -207,7 +217,7 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
         <p className="hint">First 200 products. Quantities come from recorded movements. Opening value is opening quantity × recorded unit cost; profit is not calculated here.</p>
         <div className="table-scroll"><table><caption>Recorded inventory</caption><thead><tr><th>Product</th><th>Quantity</th><th>Unit</th><th>Opening value</th></tr></thead><tbody>{stock.map((item) => <tr key={item.product_id}><td>{item.name}<small>{item.sku}</small></td><td>{item.quantity}</td><td>{item.unit}</td><td>{money(item.opening_value)}</td></tr>)}</tbody></table></div>
         {!stock.length && <p>Add products before recording opening stock.</p>}
-        {canApprove && <form className="form-grid opening-form" onChange={(event) => {
+        {canApprove && <details className="stock-entry"><summary>Record opening stock</summary><form className="form-grid opening-form" onChange={(event) => {
           const input = event.target;
           const confirmation = event.currentTarget.elements.namedItem('confirmed');
           if (input.getAttribute('name') !== 'confirmed' && confirmation instanceof HTMLInputElement) confirmation.checked = false;
@@ -217,11 +227,12 @@ export default function OperationsWorkspace({ business, session, stores, onRecor
           {openingProduct?.batch_tracking && <label>Batch number<input name="batch_number" required maxLength={100} /></label>}{openingProduct?.expiry_tracking && <label>Expiry date<input name="expiry_date" type="date" required /></label>}
           <label className="full-width">Count source and reason<textarea name="reason" required minLength={3} maxLength={500} /></label>
           <label className="checkbox-label full-width"><input name="confirmed" type="checkbox" required />I confirm the physical count and cost. This creates an immutable stock movement.</label>
-          <p className="hint full-width">Each product/lot can have one opening entry. Later corrections need a separate reviewed adjustment workflow, which is not available yet.</p><button disabled={pending || !openingProductId}>Confirm opening stock</button>
-        </form>}
+          <p className="hint full-width">Each product/lot can have one opening entry. Use Corrections & returns for later reviewed adjustments.</p><button disabled={pending || !openingProductId}>Confirm opening stock</button>
+        </form></details>}
         <h4>Recent movements</h4><ul className="record-list">{movements.map((item) => <li key={item.id}><strong>{item.kind} · {item.quantity} · {products.find((product) => product.id === item.product_id)?.name ?? item.product_id}</strong><span>{item.reason} · {new Date(item.created_at).toLocaleString()} · {item.source} · {item.id}</span></li>)}</ul>
         {!movements.length && <p>No stock movements recorded.</p>}
       </>}
     </section>}
+    </div>
   </section>;
 }

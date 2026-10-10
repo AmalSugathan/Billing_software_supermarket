@@ -12,29 +12,32 @@ function responses(ready: boolean) {
   ));
 }
 
-describe('development environment status', () => {
+describe('store connectivity', () => {
   it('reports API availability separately from an unmigrated database and can retry', async () => {
     const fetchMock = responses(false);
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
+    await userEvent.click(await screen.findByText('Connection needs attention'));
     const status = screen.getByRole('status', { name: 'Environment health' });
     expect(await within(status).findByText('available')).toBeInTheDocument();
     expect(within(status).getByText('unavailable')).toBeInTheDocument();
     fetchMock.mockImplementation(responses(true));
     await userEvent.click(screen.getByRole('button', { name: 'Check again' }));
     expect(await within(status).findAllByText('available')).toHaveLength(2);
-    expect(screen.getByText(/Original supplier-bill OCR is planned for Phase 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/Phase 1|Phase 2|The development path/)).not.toBeInTheDocument();
   });
 
   it('does not show success when the server is unreachable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     render(<App />);
+    await userEvent.click(await screen.findByText('Connection needs attention'));
     expect(await within(screen.getByRole('status', { name: 'Environment health' })).findAllByText('unavailable')).toHaveLength(2);
   });
 
   it('rejects an invalid health payload even with a successful HTTP status', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ sales: 100 }))));
     render(<App />);
+    await userEvent.click(await screen.findByText('Connection needs attention'));
     expect(await within(screen.getByRole('status', { name: 'Environment health' })).findAllByText('unavailable')).toHaveLength(2);
   });
 });

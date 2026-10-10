@@ -27,7 +27,7 @@ export default function OfflinePrepare({ business, session, stores }: { business
     event.preventDefault(); if (busy.current) return; const form = new FormData(event.currentTarget); busy.current = true; setPending(true); setError(''); setNotice('');
     let command: PendingCommand | null;
     try {
-      if (!('serviceWorker' in navigator) || !import.meta.env.PROD) throw new Error('Offline checkout needs the built application. Open http://127.0.0.1:8080 after the pilot preview starts.');
+      if (!('serviceWorker' in navigator) || !import.meta.env.PROD) throw new Error('Offline checkout needs the built application. Open http://127.0.0.1:8080 when the store application is running.');
       const registration = await Promise.race([navigator.serviceWorker.ready, new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Offline application cache is unavailable. Reload online and retry.')), 10000))]);
       if (!registration.active) throw new Error('Offline cache has not finished installing. Reload online.');
       const passphrase = String(form.get('passphrase')); if (passphrase.length < 12) throw new Error('Use a device passphrase of at least 12 characters.');
@@ -54,7 +54,7 @@ export default function OfflinePrepare({ business, session, stores }: { business
     catch (error) { setError(error instanceof Error ? error.message : 'Recovery failed.'); } finally { setPending(false); }
   }
   return <section className="workspace-card"><h4>Prepare an offline cash till</h4><p>Reserve a limited stock quota while online. This prevents other tills selling the same units. Fixed prices and cash only; synchronize and finalize before cash closing. Keep the device passphrase and encrypted backups safe.</p>
-    <p><a href="/offline-pos">Open offline till</a></p>{!import.meta.env.PROD && <p>Use the built pilot application at <a href="http://127.0.0.1:8080">127.0.0.1:8080</a> for offline cache support.</p>}
+    <p><a href="/offline-pos">Open offline till</a></p>{!import.meta.env.PROD && <p>Use the store application at <a href="http://127.0.0.1:8080">127.0.0.1:8080</a> for offline cache support.</p>}
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <label>Store<select value={storeId} disabled={pending} onChange={(event) => { setStoreId(event.target.value); setQuantities({}); }}>{stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}</select></label>
     <form onSubmit={(event) => void prepare(event)}><label>Terminal<select name="terminal_id" required>{terminals.map((terminal) => <option key={terminal.id} value={terminal.id}>{terminal.name}</option>)}</select></label><label>Your open cash session<select name="cash_session_id" required>{sessions.map((cash) => <option key={cash.id} value={cash.id}>{cash.id} · Opening ₹{cash.opening_cash}</option>)}</select></label>
